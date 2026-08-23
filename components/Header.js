@@ -1,4 +1,4 @@
-export default function Header({ active, onChange }) {
+export default function Header({ active, onChange, user, onLogout }) {
   const tabs = ["All", "Fashion", "Home"];
 
   return (
@@ -6,9 +6,15 @@ export default function Header({ active, onChange }) {
       <div className="topbar">
         <div className="wordmark">thredori</div>
         <div className="search">Search labels, styles, makers...</div>
-        <div className="avatar" aria-hidden="true">
-          ●
-        </div>
+        {user ? (
+          <button className="auth-link" onClick={onLogout}>
+            Log out
+          </button>
+        ) : (
+          <a className="auth-link" href="/login">
+            Log in
+          </a>
+        )}
       </div>
 
       <div className="tabs">
@@ -51,9 +57,14 @@ export default function Header({ active, onChange }) {
           font-size: 13px;
           color: var(--muted);
         }
-        .avatar {
+        .auth-link {
           color: var(--ink);
-          font-size: 18px;
+          font-size: 13px;
+          background: none;
+          border: 1px solid var(--cotton-line);
+          border-radius: 20px;
+          padding: 6px 14px;
+          white-space: nowrap;
         }
         .tabs {
           display: flex;

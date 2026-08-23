@@ -1,21 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import BrandCard from "../components/BrandCard";
 import { brands } from "../data/brands";
+import { supabase } from "../lib/supabaseClient";
 
 const heights = [150, 110, 170, 95, 130, 115, 150, 100];
 
 export default function Home() {
   const [active, setActive] = useState("All");
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setUser(null);
+  }
 
   const filtered =
     active === "All" ? brands : brands.filter((b) => b.category === active);
 
   return (
     <main>
-      <Header active={active} onChange={setActive} />
+      <Header active={active} onChange={setActive} user={user} onLogout={handleLogout} />
 
       <section className="intro container">
         <p>Discover independent Indian fashion & home labels — before they’re everywhere.</p>

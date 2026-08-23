@@ -1,34 +1,42 @@
-# Thredori — v1
+# Thredori — v2 (with accounts)
 
-A Next.js web app with a Pinterest-style feed, Fashion/Home filtering, and
-your locked visual identity (indigo, madder red, cotton off-white, swatch
-cards).
+Added since v1: real sign up / log in, powered by Supabase.
 
-## What's in here
-- `app/page.js` — the homepage and feed
-- `app/layout.js` — page shell, title, meta description
-- `app/globals.css` — colors, fonts, base styles
-- `components/Header.js` — top bar, search, category tabs
-- `components/BrandCard.js` — the swatch card design
-- `data/brands.js` — your seed content (edit this file to add/change brands)
+## New in this version
+- `app/signup/page.js` — create account
+- `app/login/page.js` — log in
+- `lib/supabaseClient.js` — connects to your Supabase project
+- Header now shows "Log in" or "Log out" depending on whether someone's
+  signed in
 
-## How to add or edit brands
-Open `data/brands.js` and edit the list. Each entry needs:
-`id`, `name`, `category` ("Fashion" or "Home"), `note`, `location`, `color`
-(a hex fallback), and `image` (leave empty for now, or paste a real photo
-URL once a brand gives permission).
+## Before you upload: two things to do differently this time
 
-## Deploy this — no command line needed
+### 1. Add your Supabase keys to Vercel (not to GitHub)
+Do NOT upload a `.env.local` file to GitHub — keep your keys out of the
+public repo as good practice, even though this particular key is safe to
+expose.
 
-1. Go to github.com, log in, click "New repository." Name it `thredori`.
-   Keep it Public. Don't initialize with a README (you already have one).
-2. On the new repo page, click "uploading an existing file." Drag every
-   file and folder from this package into that upload box, then commit.
-3. Go to vercel.com, click "Sign up," choose "Continue with GitHub."
-4. Click "Add New Project," select your `thredori` repo, click "Deploy."
-   Vercel auto-detects Next.js — no settings to change.
-5. In a minute or two, Vercel gives you a live URL like
-   `thredori.vercel.app`. That's your app, live on the internet.
-6. To connect your real domain: in the Vercel project, go to
-   Settings > Domains, add `thredori.com`, then add the DNS records
-   Vercel shows you into your GoDaddy domain settings.
+Instead:
+1. Go to your project on vercel.com > Settings > Environment Variables
+2. Add two variables:
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://qxvsxmzgxdjdwbpcpkka.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `sb_publishable_YyYh4e1rUn8wZHDc4J_2Sw_upufO2Pi`
+3. Save, then go to the "Deployments" tab and click "Redeploy" on the
+   latest deployment so it picks up the new variables.
+
+### 2. Upload these new/changed files to GitHub
+Same process as before — go to your `thredori` repo, and either:
+- Upload the new `signup` and `login` folders (inside `app`), and the new
+  `lib` folder, as new files, OR
+- Easiest: delete the old `app` and `components` folders in the repo and
+  re-upload the full updated versions from this package, so everything
+  stays in sync.
+
+Once both are done, visit `your-site.vercel.app/signup` to test creating
+an account.
+
+## Note on email confirmation
+By default, Supabase requires confirming a new account via email before
+login works. If you want to turn this off while testing (not recommended
+for the real launch), go to Supabase > Authentication > Providers > Email
+and toggle off "Confirm email."
