@@ -7,9 +7,14 @@ export default function Header({ active, onChange, user, onLogout }) {
         <div className="wordmark">thredori</div>
         <div className="search">Search labels, styles, makers...</div>
         {user ? (
-          <button className="auth-link" onClick={onLogout}>
-            Log out
-          </button>
+          <>
+            <a className="new-post-link" href="/new-post">
+              + New post
+            </a>
+            <button className="auth-link" onClick={onLogout}>
+              Log out
+            </button>
+          </>
         ) : (
           <a className="auth-link" href="/login">
             Log in
@@ -65,6 +70,17 @@ export default function Header({ active, onChange, user, onLogout }) {
           border-radius: 20px;
           padding: 6px 14px;
           white-space: nowrap;
+        }
+        .new-post-link {
+          color: var(--indigo-text);
+          background: var(--indigo);
+          font-size: 13px;
+          border-radius: 20px;
+          padding: 6px 14px;
+          white-space: nowrap;
+        }
+        .topbar {
+          gap: 10px;
         }
         .tabs {
           display: flex;

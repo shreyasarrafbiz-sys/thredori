@@ -11,19 +11,17 @@ export default function BrandCard({ brand, height }) {
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
-      />
+      >
+        <div className="hover-scrim">
+          <button aria-label={`Save ${brand.name}`} className="save-button">
+            Save
+          </button>
+        </div>
+      </div>
       <div className="brand-card-name">{brand.name}</div>
       <div className="brand-card-note">{brand.note}</div>
       <div className="brand-card-footer">
         <span className="brand-card-location">{brand.location}</span>
-        <button aria-label={`Save ${brand.name}`} className="brand-card-heart">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 21s-7.5-4.6-10-9.1C.5 8.4 2.3 5 5.6 5c1.9 0 3.4 1 4.4 2.5C11 6 12.5 5 14.4 5c3.3 0 5.1 3.4 3.6 6.9C19.5 16.4 12 21 12 21z"
-              fill="#a13d2e"
-            />
-          </svg>
-        </button>
       </div>
 
       <style jsx>{`
@@ -45,6 +43,37 @@ export default function BrandCard({ brand, height }) {
         .brand-card-image {
           border-radius: 4px;
           margin-bottom: 8px;
+          position: relative;
+          overflow: hidden;
+        }
+        .hover-scrim {
+          position: absolute;
+          inset: 0;
+          background: rgba(35, 32, 25, 0);
+          display: flex;
+          align-items: flex-start;
+          justify-content: flex-end;
+          padding: 8px;
+          transition: background 0.15s ease;
+        }
+        .brand-card-image:hover .hover-scrim {
+          background: rgba(35, 32, 25, 0.15);
+        }
+        .save-button {
+          background: var(--madder);
+          color: var(--madder-text);
+          font-size: 12px;
+          font-weight: 600;
+          border: none;
+          border-radius: 18px;
+          padding: 7px 14px;
+          opacity: 0;
+          transform: translateY(-4px);
+          transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .brand-card-image:hover .save-button {
+          opacity: 1;
+          transform: translateY(0);
         }
         .brand-card-name {
           font-family: var(--font-voice);
@@ -67,12 +96,6 @@ export default function BrandCard({ brand, height }) {
           color: #6b5f4e;
           padding: 2px 8px;
           border-radius: 10px;
-        }
-        .brand-card-heart {
-          background: none;
-          border: none;
-          padding: 4px;
-          display: flex;
         }
       `}</style>
     </div>

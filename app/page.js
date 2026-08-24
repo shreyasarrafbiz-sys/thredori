@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import BrandCard from "../components/BrandCard";
-import { brands } from "../data/brands";
+import { brands as seedBrands } from "../data/brands";
 import { supabase } from "../lib/supabaseClient";
 
 const heights = [150, 110, 170, 95, 130, 115, 150, 100];
@@ -11,6 +11,8 @@ const heights = [150, 110, 170, 95, 130, 115, 150, 100];
 export default function Home() {
   const [active, setActive] = useState("All");
   const [user, setUser] = useState(null);
+  const [posts, setPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -20,13 +22,41 @@ export default function Home() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    async function loadPosts() {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        // Map database rows to the same shape BrandCard expects
+        const mapped = data.map((p) => ({
+          id: p.id,
+          name: p.brand_name,
+          category: p.category,
+          note: p.note,
+          location: "",
+          link: p.brand_link,
+          color: "#8A7F6B",
+          image: p.image_url,
+        }));
+        setPosts(mapped);
+      }
+      setLoadingPosts(false);
+    }
+    loadPosts();
+  }, []);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     setUser(null);
   }
 
+  // Real posts first, seed content fills the rest so the feed isn't empty on day one
+  const combined = [...posts, ...seedBrands];
   const filtered =
-    active === "All" ? brands : brands.filter((b) => b.category === active);
+    active === "All" ? combined : combined.filter((b) => b.category === active);
 
   return (
     <main>
@@ -36,11 +66,15 @@ export default function Home() {
         <p>Discover independent Indian fashion & home labels — before they’re everywhere.</p>
       </section>
 
-      <section className="grid container">
-        {filtered.map((brand, i) => (
-          <BrandCard key={brand.id} brand={brand} height={heights[i % heights.length]} />
-        ))}
-      </section>
+      {loadingPosts ? (
+        <p className="loading container">Loading...</p>
+      ) : (
+        <section className="grid container">
+          {filtered.map((brand, i) => (
+            <BrandCard key={brand.id} brand={brand} height={heights[i % heights.length]} />
+          ))}
+        </section>
+      )}
 
       <footer className="container">
         <p>Thredori · Curated, not algorithm-fed.</p>
@@ -54,6 +88,11 @@ export default function Home() {
           font-size: 13px;
           color: var(--muted);
           margin: 0;
+        }
+        .loading {
+          padding: 20px;
+          font-size: 13px;
+          color: var(--muted);
         }
         .grid {
           column-count: 1;
