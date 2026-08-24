@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Header from "../components/Header";
 import BrandCard from "../components/BrandCard";
 import { brands as seedBrands } from "../data/brands";
 import { supabase } from "../lib/supabaseClient";
 
 const heights = [150, 110, 170, 95, 130, 115, 150, 100];
+const PAGE_SIZE = 9;
 
 export default function Home() {
   const [active, setActive] = useState("All");
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -22,39 +27,74 @@ export default function Home() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    async function loadPosts() {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .order("created_at", { ascending: false });
+  const loadPage = useCallback(async (pageIndex) => {
+    const from = pageIndex * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
 
-      if (!error && data) {
-        // Map database rows to the same shape BrandCard expects
-        const mapped = data.map((p) => ({
-          id: p.id,
-          name: p.brand_name,
-          category: p.category,
-          note: p.note,
-          location: "",
-          link: p.brand_link,
-          color: "#8A7F6B",
-          image: p.image_url,
-        }));
-        setPosts(mapped);
-      }
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (error || !data) return [];
+
+    return data.map((p) => ({
+      id: p.id,
+      name: p.brand_name,
+      category: p.category,
+      note: p.note,
+      location: "",
+      link: p.brand_link,
+      color: "#8A7F6B",
+      image: p.image_url,
+      isReal: true,
+    }));
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    async function init() {
+      const first = await loadPage(0);
+      setPosts(first);
+      setHasMore(first.length === PAGE_SIZE);
       setLoadingPosts(false);
     }
-    loadPosts();
-  }, []);
+    init();
+  }, [loadPage]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!sentinelRef.current || loadingPosts) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          setLoadingMore(true);
+          const nextPage = page + 1;
+          loadPage(nextPage).then((more) => {
+            setPosts((prev) => [...prev, ...more]);
+            setHasMore(more.length === PAGE_SIZE);
+            setPage(nextPage);
+            setLoadingMore(false);
+          });
+        }
+      },
+      { rootMargin: "300px" }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, page, loadPage, loadingPosts]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
     setUser(null);
   }
 
-  // Real posts first, seed content fills the rest so the feed isn't empty on day one
-  const combined = [...posts, ...seedBrands];
+  const seedWithFlag = seedBrands.map((b) => ({ ...b, isReal: false }));
+  // Seed content only appears once real posts are exhausted, so it acts as a tail, not noise mixed through pagination
+  const combined = hasMore ? posts : [...posts, ...seedWithFlag];
   const filtered =
     active === "All" ? combined : combined.filter((b) => b.category === active);
 
@@ -69,11 +109,20 @@ export default function Home() {
       {loadingPosts ? (
         <p className="loading container">Loading...</p>
       ) : (
-        <section className="grid container">
-          {filtered.map((brand, i) => (
-            <BrandCard key={brand.id} brand={brand} height={heights[i % heights.length]} />
-          ))}
-        </section>
+        <>
+          <section className="grid container">
+            {filtered.map((brand, i) => (
+              <BrandCard
+                key={brand.id}
+                brand={brand}
+                height={heights[i % heights.length]}
+                user={user}
+              />
+            ))}
+          </section>
+          <div ref={sentinelRef} className="sentinel" />
+          {loadingMore && <p className="loading container">Loading more...</p>}
+        </>
       )}
 
       <footer className="container">
@@ -93,6 +142,10 @@ export default function Home() {
           padding: 20px;
           font-size: 13px;
           color: var(--muted);
+          text-align: center;
+        }
+        .sentinel {
+          height: 1px;
         }
         .grid {
           column-count: 1;
