@@ -1,54 +1,34 @@
-# Thredori — v5 (detail page, real save, infinite scroll)
+# Thredori — v7 (profile, my posts, saved posts, delete)
 
-The three Pinterest mechanics from last time are now real:
+## New in this version
+- **`/profile` page** — new. Shows two tabs: "My posts" (everything you've
+  posted) and "Saved" (everything you've hearted/saved). Accessible via
+  a "Profile" link in the header when logged in.
+- **Delete your own posts** — a Delete button appears on your posts, both
+  in your profile grid and on the individual post detail page (only
+  visible to the post's owner — other people's posts won't show it to you).
+- **Unsave from your profile** — the Saved tab lets you remove things
+  you've saved directly from that list.
 
-## 1. Click-through detail page
-`app/post/[id]/page.js` — clicking any real post (one someone actually
-created via "+ New post") opens it full-size with the brand name, note,
-category, a working Save button, and a link to visit the brand.
-
-Seed brands (the original 8 placeholder examples) aren't clickable —
-they're not real database records, so there's nothing to click through
-to. This is expected, not a bug.
-
-## 2. Real save functionality
-Saving now writes to a new `saved_posts` table in Supabase. **Before
-uploading this version, run this in Supabase SQL Editor:**
+## Required: add a DELETE policy in Supabase
+Deleting currently has no database permission set up — without this,
+clicking Delete will silently fail. Run this in SQL Editor:
 
 ```sql
-create table saved_posts (
-  user_id uuid references auth.users not null,
-  post_id uuid references posts not null,
-  created_at timestamp default now(),
-  primary key (user_id, post_id)
-);
-
-alter table saved_posts enable row level security;
-
-create policy "Users manage their own saves" on saved_posts
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can delete their own posts" on posts
+  for delete using (auth.uid() = user_id);
 ```
 
-If you skip this, clicking Save will silently fail (nothing happens,
-no error shown).
-
-The Save button works on both the feed cards and the detail page. If
-you're logged out and click Save, it sends you to `/login`.
-
-## 3. Infinite scroll
-The homepage now loads 9 real posts at a time, and loads more
-automatically as you scroll near the bottom. The original 8 seed brands
-only appear after all real posts have loaded — they act as a tail, not
-mixed into the main feed, so as you post more real content, the feed
-becomes fully real over time.
-
-## What changed
-- New: `app/post/[id]/page.js`
-- Changed: `components/BrandCard.js`, `app/page.js`
-
 ## Upload
-1. Run the SQL above in Supabase first
-2. Upload the full package to GitHub (new `post` folder inside `app`,
-   replace the two changed files — GitHub will ask to confirm those two
-   overwrites, say yes)
-3. Vercel auto-redeploys, no new environment variables needed
+New: `app/profile/page.js`. Changed: `components/Header.js`,
+`app/post/[id]/page.js`. Upload the whole package — GitHub will ask to
+confirm the two changed files, say yes.
+
+## Test
+1. Run the SQL above first
+2. Log in, click "Profile" in the header
+3. Confirm your posts show under "My posts" and anything you've saved
+   shows under "Saved"
+4. Try deleting a post you own — it should disappear from the list and
+   from the main feed
+5. Try unsaving something — same, disappears from the Saved tab

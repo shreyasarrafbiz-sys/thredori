@@ -65,6 +65,12 @@ export default function PostDetail() {
     setSaving(false);
   }
 
+  async function handleDelete() {
+    if (!confirm("Delete this post? This can't be undone.")) return;
+    await supabase.from("posts").delete().eq("id", id);
+    router.push("/profile");
+  }
+
   if (loading) {
     return (
       <main className="page">
@@ -152,6 +158,12 @@ export default function PostDetail() {
               Visit brand ↗
             </a>
           )}
+
+          {user && user.id === post.user_id && (
+            <button className="delete-btn" onClick={handleDelete}>
+              Delete post
+            </button>
+          )}
         </div>
       </div>
 
@@ -227,6 +239,16 @@ export default function PostDetail() {
           font-size: 13px;
           color: var(--indigo);
           margin-top: 4px;
+        }
+        .delete-btn {
+          width: fit-content;
+          font-size: 12px;
+          color: var(--madder);
+          background: none;
+          border: 1px solid var(--madder);
+          border-radius: 16px;
+          padding: 6px 16px;
+          margin-top: 8px;
         }
       `}</style>
     </main>

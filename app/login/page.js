@@ -29,6 +29,13 @@ export default function Login() {
     }
   }
 
+  async function handleGoogleLogin() {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+  }
+
   return (
     <main className="auth-page">
       <form onSubmit={handleLogin} className="auth-card">
@@ -60,6 +67,20 @@ export default function Login() {
         </button>
 
         {message && <p className="message">{message}</p>}
+
+        <div className="divider">
+          <span>or</span>
+        </div>
+
+        <button type="button" className="google-btn" onClick={handleGoogleLogin}>
+          <svg width="16" height="16" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/>
+            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/>
+            <path fill="#4CAF50" d="M24 44c5.3 0 10.1-2 13.7-5.4l-6.3-5.3C29.4 35 26.8 36 24 36c-5.3 0-9.7-3.1-11.3-7.6l-6.5 5C9.6 39.6 16.2 44 24 44z"/>
+            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.7l6.3 5.3C40.9 36.6 44 30.8 44 24c0-1.4-.1-2.7-.4-3.5z"/>
+          </svg>
+          Continue with Google
+        </button>
 
         <p className="switch">
           No account yet? <a href="/signup">Sign up</a>
@@ -138,6 +159,35 @@ export default function Login() {
         }
         .switch a {
           color: var(--indigo);
+        }
+        .divider {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 4px 0;
+        }
+        .divider::before,
+        .divider::after {
+          content: "";
+          flex: 1;
+          height: 1px;
+          background: var(--cotton-line);
+        }
+        .divider span {
+          font-size: 12px;
+          color: var(--muted);
+        }
+        .google-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          background: #fff;
+          color: var(--ink);
+          border: 1px solid var(--cotton-line);
+          border-radius: 20px;
+          padding: 10px;
+          font-size: 14px;
         }
       `}</style>
     </main>

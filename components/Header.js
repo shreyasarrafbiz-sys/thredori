@@ -11,6 +11,9 @@ export default function Header({ active, onChange, user, onLogout }) {
             <a className="new-post-link" href="/new-post">
               + New post
             </a>
+            <a className="auth-link" href="/profile">
+              Profile
+            </a>
             <button className="auth-link" onClick={onLogout}>
               Log out
             </button>
