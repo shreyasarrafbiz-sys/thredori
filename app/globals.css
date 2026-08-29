@@ -32,6 +32,16 @@ a {
   text-decoration: none;
 }
 
+.app-content {
+  margin-left: 76px;
+}
+
+@media (max-width: 640px) {
+  .app-content {
+    margin-left: 0;
+  }
+}
+
 button {
   font-family: inherit;
   cursor: pointer;

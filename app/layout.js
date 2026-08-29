@@ -1,4 +1,5 @@
 import "./globals.css";
+import Sidebar from "../components/Sidebar";
 
 export const metadata = {
   title: "Thredori — fashion & home, before they're everywhere",
@@ -9,7 +10,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Sidebar />
+        <div className="app-content">{children}</div>
+      </body>
     </html>
   );
 }
