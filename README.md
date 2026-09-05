@@ -1,34 +1,31 @@
-# Thredori — v7 (profile, my posts, saved posts, delete)
+# Image sizing fix
 
-## New in this version
-- **`/profile` page** — new. Shows two tabs: "My posts" (everything you've
-  posted) and "Saved" (everything you've hearted/saved). Accessible via
-  a "Profile" link in the header when logged in.
-- **Delete your own posts** — a Delete button appears on your posts, both
-  in your profile grid and on the individual post detail page (only
-  visible to the post's owner — other people's posts won't show it to you).
-- **Unsave from your profile** — the Saved tab lets you remove things
-  you've saved directly from that list.
+## What was wrong
+Every card forced its image into a fixed-height box using
+`background-size: cover`, which crops photos to fit — that's why
+Nishorama's portrait photo looked chopped in half. True Pinterest
+masonry never crops; it lets each photo keep its own natural shape,
+and the different resulting heights are what create the staggered
+look.
 
-## Required: add a DELETE policy in Supabase
-Deleting currently has no database permission set up — without this,
-clicking Delete will silently fail. Run this in SQL Editor:
-
-```sql
-create policy "Users can delete their own posts" on posts
-  for delete using (auth.uid() = user_id);
-```
+## What changed
+- `components/BrandCard.js` — real posts (ones with an uploaded photo)
+  now render as an actual `<img>` at `width: 100%, height: auto`, so
+  the photo displays at its true proportions, whatever they are.
+  Placeholder/seed brands with no real photo still show a fixed-height
+  solid color block, since there's nothing to size against.
+- `app/page.js` — removed the old fixed-height array that used to be
+  passed to every card; no longer needed since cards size themselves.
 
 ## Upload
-New: `app/profile/page.js`. Changed: `components/Header.js`,
-`app/post/[id]/page.js`. Upload the whole package — GitHub will ask to
-confirm the two changed files, say yes.
+1. Go to your `thredori` GitHub repo
+2. Go into the `components` folder, upload `BrandCard.js`, confirm the
+   overwrite
+3. Go into the `app` folder, upload `page.js`, confirm the overwrite
+4. Commit both, Vercel auto-redeploys
 
-## Test
-1. Run the SQL above first
-2. Log in, click "Profile" in the header
-3. Confirm your posts show under "My posts" and anything you've saved
-   shows under "Saved"
-4. Try deleting a post you own — it should disappear from the list and
-   from the main feed
-5. Try unsaving something — same, disappears from the Saved tab
+## Note
+This only affects the main feed grid. If you want the individual post
+detail page (`/post/[id]`) to also show the un-cropped photo instead
+of its current fixed 420px crop, let me know and I'll fix that one too
+— it's a similar change but in a different file.
