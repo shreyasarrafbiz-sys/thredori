@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
+import VoteControl from "./VoteControl";
 
 export default function BrandCard({ brand, user }) {
   const [saved, setSaved] = useState(false);
@@ -89,6 +90,11 @@ export default function BrandCard({ brand, user }) {
       <div className="brand-card-footer">
         <span className="brand-card-location">{brand.location}</span>
       </div>
+      {brand.isReal && (
+        <div className="brand-card-vote">
+          <VoteControl postId={brand.id} user={user} />
+        </div>
+      )}
 
       <style jsx>{`
         .brand-card {
@@ -127,6 +133,9 @@ export default function BrandCard({ brand, user }) {
           color: #6b5f4e;
           padding: 2px 8px;
           border-radius: 10px;
+        }
+        .brand-card-vote {
+          margin-top: 8px;
         }
       `}</style>
 
