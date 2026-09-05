@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 
-export default function BrandCard({ brand, height, user }) {
+export default function BrandCard({ brand, user }) {
   const [saved, setSaved] = useState(false);
   const router = useRouter();
 
@@ -45,17 +45,29 @@ export default function BrandCard({ brand, height, user }) {
     }
   }
 
-  const image = (
-    <div
-      className="brand-card-image"
-      style={{
-        height: height || 130,
-        background: brand.color,
-        backgroundImage: brand.image ? `url(${brand.image})` : undefined,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
+  // Real posts with a real photo: render an actual <img>, letting it keep
+  // its natural aspect ratio (Pinterest-style masonry). No cropping, no
+  // forced height — the column layout's `break-inside: avoid` plus
+  // variable image heights is what creates the staggered look.
+  //
+  // Seed/placeholder brands with no real photo: keep a fixed-height solid
+  // color block, since there's no real image to size against.
+  const media = brand.image ? (
+    <div className="media-wrap">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={brand.image} alt={brand.name} className="brand-photo" />
+      <div className="hover-scrim">
+        <button
+          aria-label={saved ? `Unsave ${brand.name}` : `Save ${brand.name}`}
+          className={`save-button ${saved ? "saved" : ""}`}
+          onClick={handleSave}
+        >
+          {saved ? "Saved" : "Save"}
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="media-wrap placeholder" style={{ background: brand.color, height: 150 }}>
       <div className="hover-scrim">
         <button
           aria-label={saved ? `Unsave ${brand.name}` : `Save ${brand.name}`}
@@ -71,7 +83,7 @@ export default function BrandCard({ brand, height, user }) {
   return (
     <div className="brand-card">
       <div className="brand-card-hole" />
-      {brand.isReal ? <Link href={`/post/${brand.id}`}>{image}</Link> : image}
+      {brand.isReal ? <Link href={`/post/${brand.id}`}>{media}</Link> : media}
       <div className="brand-card-name">{brand.name}</div>
       <div className="brand-card-note">{brand.note}</div>
       <div className="brand-card-footer">
@@ -119,12 +131,21 @@ export default function BrandCard({ brand, height, user }) {
       `}</style>
 
       <style jsx global>{`
-        .brand-card-image {
+        .media-wrap {
+          position: relative;
           border-radius: 4px;
           margin-bottom: 8px;
-          position: relative;
           overflow: hidden;
           display: block;
+        }
+        .brand-photo {
+          display: block;
+          width: 100%;
+          height: auto;
+          border-radius: 4px;
+        }
+        .media-wrap.placeholder {
+          width: 100%;
         }
         .hover-scrim {
           position: absolute;
@@ -136,7 +157,7 @@ export default function BrandCard({ brand, height, user }) {
           padding: 8px;
           transition: background 0.15s ease;
         }
-        .brand-card-image:hover .hover-scrim {
+        .media-wrap:hover .hover-scrim {
           background: rgba(35, 32, 25, 0.15);
         }
         .save-button {
@@ -157,7 +178,7 @@ export default function BrandCard({ brand, height, user }) {
           background: var(--indigo);
           color: var(--indigo-text);
         }
-        .brand-card-image:hover .save-button {
+        .media-wrap:hover .save-button {
           opacity: 1;
           transform: translateY(0);
         }
