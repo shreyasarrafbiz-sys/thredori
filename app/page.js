@@ -6,7 +6,6 @@ import BrandCard from "../components/BrandCard";
 import { brands as seedBrands } from "../data/brands";
 import { supabase } from "../lib/supabaseClient";
 
-const heights = [150, 110, 170, 95, 130, 115, 150, 100];
 const PAGE_SIZE = 9;
 
 export default function Home() {
@@ -45,14 +44,12 @@ export default function Home() {
       category: p.category,
       note: p.note,
       location: "",
-      link: p.brand_link,
       color: "#8A7F6B",
       image: p.image_url,
       isReal: true,
     }));
   }, []);
 
-  // Initial load
   useEffect(() => {
     async function init() {
       const first = await loadPage(0);
@@ -63,7 +60,6 @@ export default function Home() {
     init();
   }, [loadPage]);
 
-  // Infinite scroll observer
   useEffect(() => {
     if (!sentinelRef.current || loadingPosts) return;
 
@@ -93,7 +89,6 @@ export default function Home() {
   }
 
   const seedWithFlag = seedBrands.map((b) => ({ ...b, isReal: false }));
-  // Seed content only appears once real posts are exhausted, so it acts as a tail, not noise mixed through pagination
   const combined = hasMore ? posts : [...posts, ...seedWithFlag];
   const filtered =
     active === "All" ? combined : combined.filter((b) => b.category === active);
@@ -111,13 +106,8 @@ export default function Home() {
       ) : (
         <>
           <section className="grid container">
-            {filtered.map((brand, i) => (
-              <BrandCard
-                key={brand.id}
-                brand={brand}
-                height={heights[i % heights.length]}
-                user={user}
-              />
+            {filtered.map((brand) => (
+              <BrandCard key={brand.id} brand={brand} user={user} />
             ))}
           </section>
           <div ref={sentinelRef} className="sentinel" />
