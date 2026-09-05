@@ -7,8 +7,10 @@ import { supabase } from "../../lib/supabaseClient";
 export default function NewPost() {
   const [user, setUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [postType, setPostType] = useState("post"); // "post" (brand find) or "thread" (discussion)
   const [brandName, setBrandName] = useState("");
   const [note, setNote] = useState("");
+  const [body, setBody] = useState("");
   const [brandLink, setBrandLink] = useState("");
   const [category, setCategory] = useState("Fashion");
   const [imageFile, setImageFile] = useState(null);
@@ -54,19 +56,19 @@ export default function NewPost() {
         return;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from("post-images")
-        .getPublicUrl(filePath);
+      const { data: publicUrlData } = supabase.storage.from("post-images").getPublicUrl(filePath);
       imageUrl = publicUrlData.publicUrl;
     }
 
     const { error: insertError } = await supabase.from("posts").insert({
       user_id: user.id,
       brand_name: brandName,
-      note,
-      brand_link: brandLink,
-      category,
+      note: postType === "post" ? note : null,
+      body: postType === "thread" ? body : null,
+      brand_link: postType === "post" ? brandLink : null,
+      category: postType === "post" ? category : "Discussion",
       image_url: imageUrl,
+      post_type: postType,
     });
 
     setLoading(false);
@@ -123,52 +125,102 @@ export default function NewPost() {
         <div className="wordmark">thredori</div>
         <h1>New post</h1>
 
-        <label>
-          Image
-          <input type="file" accept="image/*" onChange={handleFileChange} />
-        </label>
+        <div className="type-toggle">
+          <button
+            type="button"
+            className={postType === "post" ? "active" : ""}
+            onClick={() => setPostType("post")}
+          >
+            Brand find
+          </button>
+          <button
+            type="button"
+            className={postType === "thread" ? "active" : ""}
+            onClick={() => setPostType("thread")}
+          >
+            Start a discussion
+          </button>
+        </div>
 
-        {preview && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="Preview" className="preview" />
+        {postType === "post" ? (
+          <>
+            <label>
+              Image
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+            </label>
+
+            {preview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview} alt="Preview" className="preview" />
+            )}
+
+            <label>
+              Brand name
+              <input
+                type="text"
+                required
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+              />
+            </label>
+
+            <label>
+              Note (one line, e.g. material or style)
+              <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
+            </label>
+
+            <label>
+              Brand link
+              <input
+                type="url"
+                placeholder="https://"
+                value={brandLink}
+                onChange={(e) => setBrandLink(e.target.value)}
+              />
+            </label>
+
+            <label>
+              Category
+              <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="Fashion">Fashion</option>
+                <option value="Home">Home</option>
+              </select>
+            </label>
+          </>
+        ) : (
+          <>
+            <label>
+              Title
+              <input
+                type="text"
+                required
+                placeholder="What do you want to ask or discuss?"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+              />
+            </label>
+
+            <label>
+              Details
+              <textarea
+                rows={6}
+                placeholder="Add context, ask a question, start a conversation..."
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+              />
+            </label>
+
+            <label>
+              Image (optional)
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+            </label>
+
+            {preview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview} alt="Preview" className="preview" />
+            )}
+          </>
         )}
-
-        <label>
-          Brand name
-          <input
-            type="text"
-            required
-            value={brandName}
-            onChange={(e) => setBrandName(e.target.value)}
-          />
-        </label>
-
-        <label>
-          Note (one line, e.g. material or style)
-          <input
-            type="text"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </label>
-
-        <label>
-          Brand link
-          <input
-            type="url"
-            placeholder="https://"
-            value={brandLink}
-            onChange={(e) => setBrandLink(e.target.value)}
-          />
-        </label>
-
-        <label>
-          Category
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="Fashion">Fashion</option>
-            <option value="Home">Home</option>
-          </select>
-        </label>
 
         <button type="submit" disabled={loading}>
           {loading ? "Posting..." : "Post"}
@@ -207,7 +259,26 @@ export default function NewPost() {
           font-size: 18px;
           font-weight: 500;
           text-align: center;
-          margin: 0 0 8px;
+          margin: 0 0 4px;
+        }
+        .type-toggle {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+        .type-toggle button {
+          flex: 1;
+          background: var(--cotton);
+          color: var(--muted);
+          border: 1px solid var(--cotton-line);
+          border-radius: 20px;
+          padding: 8px;
+          font-size: 12px;
+        }
+        .type-toggle button.active {
+          background: var(--indigo);
+          color: var(--indigo-text);
+          border-color: var(--indigo);
         }
         label {
           font-size: 13px;
@@ -217,20 +288,23 @@ export default function NewPost() {
           gap: 6px;
         }
         input,
-        select {
+        select,
+        textarea {
           padding: 10px 12px;
           border-radius: 6px;
           border: 1px solid var(--cotton-line);
           font-size: 14px;
           font-family: var(--font-sans);
+          resize: vertical;
         }
         .preview {
           width: 100%;
-          height: 160px;
-          object-fit: cover;
+          max-height: 220px;
+          object-fit: contain;
           border-radius: 6px;
+          background: var(--cotton);
         }
-        button {
+        button[type="submit"] {
           margin-top: 8px;
           background: var(--indigo);
           color: var(--indigo-text);
@@ -239,7 +313,7 @@ export default function NewPost() {
           padding: 10px;
           font-size: 14px;
         }
-        button:disabled {
+        button[type="submit"]:disabled {
           opacity: 0.6;
         }
         .message {
