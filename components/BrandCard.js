@@ -8,6 +8,8 @@ import VoteControl from "./VoteControl";
 
 export default function BrandCard({ brand, user }) {
   const [saved, setSaved] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
+  const [copied, setCopied] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -23,6 +25,18 @@ export default function BrandCard({ brand, user }) {
     }
     checkSaved();
   }, [user, brand.id, brand.isReal]);
+
+  useEffect(() => {
+    async function loadCommentCount() {
+      if (!brand.isReal) return;
+      const { count } = await supabase
+        .from("comments")
+        .select("id", { count: "exact", head: true })
+        .eq("post_id", brand.id);
+      setCommentCount(count || 0);
+    }
+    loadCommentCount();
+  }, [brand.id, brand.isReal]);
 
   async function handleSave(e) {
     e.preventDefault();
@@ -46,53 +60,64 @@ export default function BrandCard({ brand, user }) {
     }
   }
 
-  // Real posts with a real photo: render an actual <img>, letting it keep
-  // its natural aspect ratio (Pinterest-style masonry). No cropping, no
-  // forced height — the column layout's `break-inside: avoid` plus
-  // variable image heights is what creates the staggered look.
-  //
-  // Seed/placeholder brands with no real photo: keep a fixed-height solid
-  // color block, since there's no real image to size against.
+  async function handleShare(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/post/${brand.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: brand.name, url });
+        return;
+      } catch (err) {
+        // fall through to clipboard copy if the share sheet is cancelled
+      }
+    }
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
   const media = brand.image ? (
-    <div className="media-wrap">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={brand.image} alt={brand.name} className="brand-photo" />
-      <div className="hover-scrim">
-        <button
-          aria-label={saved ? `Unsave ${brand.name}` : `Save ${brand.name}`}
-          className={`save-button ${saved ? "saved" : ""}`}
-          onClick={handleSave}
-        >
-          {saved ? "Saved" : "Save"}
-        </button>
-      </div>
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={brand.image} alt={brand.name} className="brand-photo" />
   ) : (
-    <div className="media-wrap placeholder" style={{ background: brand.color, height: 150 }}>
-      <div className="hover-scrim">
-        <button
-          aria-label={saved ? `Unsave ${brand.name}` : `Save ${brand.name}`}
-          className={`save-button ${saved ? "saved" : ""}`}
-          onClick={handleSave}
-        >
-          {saved ? "Saved" : "Save"}
-        </button>
-      </div>
-    </div>
+    <div className="media-placeholder" style={{ background: brand.color, height: 150 }} />
   );
 
   return (
     <div className="brand-card">
       <div className="brand-card-hole" />
-      {brand.isReal ? <Link href={`/post/${brand.id}`}>{media}</Link> : media}
+      {brand.isReal ? (
+        <Link href={`/post/${brand.id}`} className="media-link">
+          {media}
+        </Link>
+      ) : (
+        media
+      )}
       <div className="brand-card-name">{brand.name}</div>
       <div className="brand-card-note">{brand.note}</div>
       <div className="brand-card-footer">
         <span className="brand-card-location">{brand.location}</span>
       </div>
+
       {brand.isReal && (
-        <div className="brand-card-vote">
+        <div className="action-row">
           <VoteControl postId={brand.id} user={user} />
+
+          <Link href={`/post/${brand.id}`} className="action-btn">
+            💬 {commentCount}
+          </Link>
+
+          <button className="action-btn" onClick={handleShare}>
+            {copied ? "Copied!" : "🔗 Share"}
+          </button>
+
+          <button
+            className={`action-btn save ${saved ? "saved" : ""}`}
+            onClick={handleSave}
+          >
+            {saved ? "★ Saved" : "☆ Save"}
+          </button>
         </div>
       )}
 
@@ -134,17 +159,30 @@ export default function BrandCard({ brand, user }) {
           padding: 2px 8px;
           border-radius: 10px;
         }
-        .brand-card-vote {
+        .action-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
           margin-top: 8px;
+          flex-wrap: wrap;
+        }
+        .action-btn {
+          background: #fff;
+          border: 1px solid var(--cotton-line);
+          border-radius: 16px;
+          padding: 4px 10px;
+          font-size: 11px;
+          color: var(--muted);
+          white-space: nowrap;
+        }
+        .action-btn.save.saved {
+          color: var(--madder);
+          border-color: var(--madder);
         }
       `}</style>
 
       <style jsx global>{`
-        .media-wrap {
-          position: relative;
-          border-radius: 4px;
-          margin-bottom: 8px;
-          overflow: hidden;
+        .media-link {
           display: block;
         }
         .brand-photo {
@@ -152,44 +190,12 @@ export default function BrandCard({ brand, user }) {
           width: 100%;
           height: auto;
           border-radius: 4px;
+          margin-bottom: 8px;
         }
-        .media-wrap.placeholder {
+        .media-placeholder {
           width: 100%;
-        }
-        .hover-scrim {
-          position: absolute;
-          inset: 0;
-          background: rgba(35, 32, 25, 0);
-          display: flex;
-          align-items: flex-start;
-          justify-content: flex-end;
-          padding: 8px;
-          transition: background 0.15s ease;
-        }
-        .media-wrap:hover .hover-scrim {
-          background: rgba(35, 32, 25, 0.15);
-        }
-        .save-button {
-          background: var(--madder);
-          color: var(--madder-text);
-          font-size: 12px;
-          font-weight: 600;
-          border: none;
-          border-radius: 18px;
-          padding: 7px 14px;
-          opacity: 0;
-          transform: translateY(-4px);
-          transition: opacity 0.15s ease, transform 0.15s ease;
-        }
-        .save-button.saved {
-          opacity: 1;
-          transform: translateY(0);
-          background: var(--indigo);
-          color: var(--indigo-text);
-        }
-        .media-wrap:hover .save-button {
-          opacity: 1;
-          transform: translateY(0);
+          border-radius: 4px;
+          margin-bottom: 8px;
         }
       `}</style>
     </div>
