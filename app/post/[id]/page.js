@@ -139,14 +139,12 @@ export default function PostDetail() {
       </div>
 
       <div className="detail-card container">
-        {!isThread && (
-          <div
-            className="detail-image"
-            style={{
-              backgroundImage: post.image_url ? `url(${post.image_url})` : undefined,
-              backgroundColor: post.image_url ? undefined : "#8A7F6B",
-            }}
-          />
+        {!isThread && post.image_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={post.image_url} alt={post.brand_name} className="detail-image" />
+        )}
+        {!isThread && !post.image_url && (
+          <div className="detail-image-fallback" />
         )}
 
         <div className="detail-info">
@@ -209,10 +207,17 @@ export default function PostDetail() {
           flex-direction: column;
         }
         .detail-image {
+          display: block;
           width: 100%;
-          height: 420px;
-          background-size: cover;
-          background-position: center;
+          height: auto;
+          max-height: 80vh;
+          object-fit: contain;
+          background: var(--cotton);
+        }
+        .detail-image-fallback {
+          width: 100%;
+          height: 260px;
+          background: #8a7f6b;
         }
         .detail-info {
           padding: 24px;
