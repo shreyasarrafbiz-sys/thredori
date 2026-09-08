@@ -8,8 +8,6 @@ import VoteControl from "./VoteControl";
 
 export default function BrandCard({ brand, user }) {
   const [saved, setSaved] = useState(false);
-  const [commentCount, setCommentCount] = useState(0);
-  const [copied, setCopied] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -20,15 +18,6 @@ export default function BrandCard({ brand, user }) {
     }
     checkSaved();
   }, [user, brand.id, brand.isReal]);
-
-  useEffect(() => {
-    async function loadCommentCount() {
-      if (!brand.isReal) return;
-      const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", brand.id);
-      setCommentCount(count || 0);
-    }
-    loadCommentCount();
-  }, [brand.id, brand.isReal]);
 
   async function handleSave(e) {
     e.preventDefault();
@@ -42,18 +31,6 @@ export default function BrandCard({ brand, user }) {
       await supabase.from("saved_posts").insert({ user_id: user.id, post_id: brand.id });
       setSaved(true);
     }
-  }
-
-  async function handleShare(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const url = `${window.location.origin}/post/${brand.id}`;
-    if (navigator.share) {
-      try { await navigator.share({ title: brand.name, url }); return; } catch (err) {}
-    }
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
   }
 
   const isTextOnlyThread = brand.isReal && brand.postType === "thread" && !brand.image;
@@ -84,8 +61,9 @@ export default function BrandCard({ brand, user }) {
       {brand.isReal && (
         <div className="action-row">
           <VoteControl postId={brand.id} user={user} />
-          <Link href={`/post/${brand.id}`} className="action-btn"><i className="ti ti-message-circle" aria-hidden="true" /> {commentCount}</Link>
-          <button className="action-btn" onClick={handleShare}>{copied ? "Copied!" : "Share"}</button>
+          <Link href={`/post/${brand.id}`} className="comment-btn" aria-label="Open comments" title="Comments">
+            <i className="ti ti-message-circle" aria-hidden="true" />
+          </Link>
           <button className={`action-btn save ${saved ? "saved" : ""}`} onClick={handleSave}>{saved ? "★ Saved" : "☆ Save"}</button>
           {brand.brandLink && (
             <a href={brand.brandLink} target="_blank" rel="noopener noreferrer" className="action-btn visit-link">
@@ -106,6 +84,8 @@ export default function BrandCard({ brand, user }) {
         .thread-title { font-size:16px; margin:4px 0; }
         .thread-body { font-size:12px; color:var(--muted); margin-bottom:6px; line-height:1.4; }
         .action-row { display:flex; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap; }
+        .comment-btn { width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--cotton-line); border-radius:50%; background:#fffdfc; color:var(--muted); font-size:15px; transition:transform 180ms ease,box-shadow 180ms ease,color 180ms ease,background 180ms ease; }
+        .comment-btn:hover { transform:translateY(-2px); box-shadow:0 6px 14px rgba(106,82,88,.1); background:var(--blush-soft); color:var(--ink); }
         .action-btn { background:#fffdfc; border:1px solid var(--cotton-line); border-radius:16px; padding:5px 10px; font-size:11px; color:var(--muted); white-space:nowrap; display:inline-flex; align-items:center; gap:4px; transition:transform 180ms ease,box-shadow 180ms ease,color 180ms ease,background 180ms ease; }
         .action-btn:hover { transform:translateY(-2px); box-shadow:0 6px 14px rgba(106,82,88,.1); background:var(--blush-soft); color:var(--ink); }
         .action-btn.save.saved { color:var(--madder); border-color:var(--blush-deep); background:var(--blush-soft); }
