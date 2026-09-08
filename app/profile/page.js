@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import ProfileFilterIcon from "../../components/ProfileFilterIcon";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [tab, setTab] = useState("posts");
+  const [tab, setTab] = useState("all");
   const [myPosts, setMyPosts] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +52,7 @@ export default function Profile() {
     const { error } = await supabase.from("posts").delete().eq("id", postId);
     if (!error) {
       setMyPosts((prev) => prev.filter((p) => p.id !== postId));
+      setSavedPosts((prev) => prev.filter((p) => p.id !== postId));
     }
   }
 
@@ -65,32 +67,47 @@ export default function Profile() {
 
   if (checkingAuth || !user) return null;
 
-  const list = tab === "posts" ? myPosts : savedPosts;
+  const savedIds = new Set(savedPosts.map((post) => post.id));
+  const allPosts = Array.from(
+    new Map([...myPosts, ...savedPosts].map((post) => [post.id, post])).values()
+  ).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  const list = tab === "posts" ? myPosts : tab === "saved" ? savedPosts : allPosts;
+
+  const filters = [
+    { id: "all", label: "All", count: allPosts.length },
+    { id: "posts", label: "Posted", count: myPosts.length },
+    { id: "saved", label: "Saved", count: savedPosts.length },
+  ];
 
   return (
     <main className="page">
-      <div className="topbar container">
-        <Link href="/" className="wordmark">
+      <div className="profile-topbar container">
+        <Link href="/" className="wordmark page-rise">
           thredori
         </Link>
         <span className="email">{user.email}</span>
       </div>
 
-      <div className="header container">
-        <h1>Your profile</h1>
-        <div className="tabs">
-          <button
-            className={tab === "posts" ? "tab active" : "tab"}
-            onClick={() => setTab("posts")}
-          >
-            My posts ({myPosts.length})
-          </button>
-          <button
-            className={tab === "saved" ? "tab active" : "tab"}
-            onClick={() => setTab("saved")}
-          >
-            Saved ({savedPosts.length})
-          </button>
+      <div className="profile-header container">
+        <div>
+          <p className="eyebrow page-rise">YOUR SPACE</p>
+          <h1 className="page-rise">Your profile</h1>
+        </div>
+
+        <div className="filter-bar page-rise" aria-label="Profile content filters">
+          {filters.map((filter) => (
+            <button
+              key={filter.id}
+              className={`filter ${tab === filter.id ? "filter-active" : ""}`}
+              onClick={() => setTab(filter.id)}
+              aria-pressed={tab === filter.id}
+            >
+              <ProfileFilterIcon type={filter.id} />
+              <span>{filter.label}</span>
+              <span className="count">{filter.count}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -98,131 +115,247 @@ export default function Profile() {
         <p className="status container">Loading...</p>
       ) : list.length === 0 ? (
         <p className="status container">
-          {tab === "posts" ? "You haven't posted anything yet." : "Nothing saved yet."}
+          {tab === "all"
+            ? "Nothing here yet. Save something lovely or make your first post."
+            : tab === "posts"
+              ? "You haven't posted anything yet."
+              : "Nothing saved yet."}
         </p>
       ) : (
         <div className="grid container">
-          {list.map((post) => (
-            <div key={post.id} className="card">
-              <Link href={`/post/${post.id}`} className="card-image-link">
-                <div
-                  className="card-image"
-                  style={{
-                    backgroundImage: post.image_url ? `url(${post.image_url})` : undefined,
-                    backgroundColor: post.image_url ? undefined : "#8A7F6B",
-                  }}
-                />
-              </Link>
-              <div className="card-body">
-                <div className="card-name">{post.brand_name}</div>
-                <div className="card-note">{post.note}</div>
-                {tab === "posts" ? (
-                  <button className="delete-btn" onClick={() => handleDelete(post.id)}>
-                    Delete
-                  </button>
-                ) : (
-                  <button className="delete-btn" onClick={() => handleUnsave(post.id)}>
-                    Unsave
-                  </button>
-                )}
+          {list.map((post, index) => {
+            const isMine = post.user_id === user.id;
+            const isSaved = savedIds.has(post.id);
+
+            return (
+              <div key={post.id} className="card page-rise" style={{ "--delay": `${Math.min(index * 45, 360)}ms` }}>
+                <Link href={`/post/${post.id}`} className="card-image-link">
+                  <div
+                    className="card-image"
+                    style={{
+                      backgroundImage: post.image_url ? `url(${post.image_url})` : undefined,
+                      backgroundColor: post.image_url ? undefined : "#c7a9a6",
+                    }}
+                  />
+                </Link>
+                <div className="card-body">
+                  <div className="card-name">{post.brand_name}</div>
+                  <div className="card-note">{post.note}</div>
+                  <div className="card-actions">
+                    {isMine && (
+                      <button className="delete-btn" onClick={() => handleDelete(post.id)}>
+                        Delete
+                      </button>
+                    )}
+                    {isSaved && (
+                      <button className="save-btn" onClick={() => handleUnsave(post.id)}>
+                        Unsave
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       <style jsx>{`
         .page {
           min-height: 100vh;
-          background: var(--cotton);
+          background: var(--blush);
         }
-        .topbar {
+        .container {
+          width: min(1100px, calc(100% - 40px));
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .profile-topbar {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 20px;
+          padding: 16px 0;
           border-bottom: 1px solid var(--cotton-line);
         }
         .wordmark {
           font-family: var(--font-voice);
           font-style: italic;
-          font-size: 19px;
+          font-size: 20px;
+          line-height: 1;
+          letter-spacing: -0.02em;
           color: var(--ink);
+          white-space: nowrap;
         }
         .email {
+          font-family: var(--font-sans);
           font-size: 13px;
           color: var(--muted);
         }
-        .header {
-          padding: 20px 20px 0;
+        .profile-header {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 24px;
+          padding: 28px 0 18px;
+        }
+        .eyebrow {
+          margin: 0 0 5px;
+          font-family: var(--font-sans);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          color: var(--madder);
         }
         h1 {
           font-family: var(--font-voice);
-          font-size: 22px;
-          margin: 0 0 14px;
+          font-size: 28px;
+          font-weight: 600;
+          line-height: 1.1;
+          margin: 0;
+          color: var(--ink);
         }
-        .tabs {
+        .filter-bar {
           display: flex;
-          gap: 8px;
-          margin-bottom: 10px;
-        }
-        .tab {
-          background: #fff;
-          color: #6b5f4e;
-          font-size: 13px;
-          padding: 6px 16px;
-          border-radius: 20px;
+          align-items: center;
+          gap: 7px;
+          padding: 5px;
           border: 1px solid var(--cotton-line);
+          border-radius: 24px;
+          background: rgba(255, 253, 252, 0.82);
+          box-shadow: var(--shadow-soft);
         }
-        .tab.active {
+        .filter {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          border: 0;
+          border-radius: 19px;
+          padding: 8px 12px;
+          background: transparent;
+          color: var(--muted);
+          font-family: var(--font-sans);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: transform 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+        }
+        .filter:hover {
+          transform: translateY(-1px);
+          color: var(--ink);
+        }
+        .filter-active {
           background: var(--indigo);
           color: var(--indigo-text);
-          border-color: var(--indigo);
+          box-shadow: 0 6px 14px rgba(43, 58, 85, 0.16);
+        }
+        .count {
+          opacity: 0.68;
+          font-size: 10px;
+        }
+        .filter-active .count {
+          opacity: 0.82;
         }
         .status {
-          padding: 30px 20px;
+          padding: 30px 0 50px;
           color: var(--muted);
+          font-family: var(--font-sans);
           font-size: 13px;
         }
         .grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
           gap: 14px;
-          padding: 10px 20px 40px;
+          padding-bottom: 50px;
         }
         .card {
-          background: #fff;
-          border-radius: 6px;
+          background: var(--cotton);
+          border: 1px solid rgba(234, 216, 213, 0.72);
+          border-radius: 14px;
           overflow: hidden;
+          box-shadow: var(--shadow-soft);
+          animation-delay: var(--delay);
+          transition: transform 220ms ease, box-shadow 220ms ease;
+        }
+        .card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-lift);
         }
         .card-image-link {
           display: block;
         }
         .card-image {
-          height: 140px;
+          height: 170px;
           background-size: cover;
           background-position: center;
         }
         .card-body {
-          padding: 10px;
+          padding: 11px 12px 12px;
         }
         .card-name {
           font-family: var(--font-voice);
-          font-size: 14px;
+          font-size: 15px;
           color: var(--ink);
         }
         .card-note {
+          font-family: var(--font-sans);
           font-size: 11px;
+          line-height: 1.4;
           color: var(--muted);
-          margin: 2px 0 8px;
+          margin: 3px 0 9px;
+        }
+        .card-actions {
+          display: flex;
+          gap: 6px;
+        }
+        .delete-btn,
+        .save-btn {
+          font-family: var(--font-sans);
+          font-size: 11px;
+          background: rgba(255, 255, 255, 0.7);
+          border-radius: 16px;
+          padding: 5px 11px;
+          cursor: pointer;
+          transition: transform 180ms ease, background 180ms ease;
         }
         .delete-btn {
-          font-size: 12px;
           color: var(--madder);
-          background: none;
           border: 1px solid var(--madder);
-          border-radius: 16px;
-          padding: 4px 12px;
+        }
+        .save-btn {
+          color: var(--ink);
+          border: 1px solid var(--cotton-line);
+        }
+        .delete-btn:hover,
+        .save-btn:hover {
+          transform: translateY(-1px);
+          background: #fff;
+        }
+        @media (max-width: 700px) {
+          .profile-header {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+          .filter-bar {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .filter {
+            flex: 1;
+            justify-content: center;
+            padding-left: 8px;
+            padding-right: 8px;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .filter,
+          .card,
+          .delete-btn,
+          .save-btn {
+            transition: none;
+          }
+          .card {
+            animation: none;
+          }
         }
       `}</style>
     </main>
