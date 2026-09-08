@@ -23,9 +23,7 @@ export default function SignUp() {
       const ext = avatarFile.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${user.id}/avatar-${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
-      if (!error) {
-        avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
-      }
+      if (!error) avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
     }
     await supabase.from("profiles").upsert({ id: user.id, full_name: fullName.trim(), avatar_url: avatarUrl, avatar_seed: avatarSeed }, { onConflict: "id" });
   }
@@ -50,7 +48,7 @@ export default function SignUp() {
   }
 
   async function handleGoogleSignUp() {
-    await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/` } });
+    await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/profile/setup` } });
   }
 
   return (
@@ -59,9 +57,7 @@ export default function SignUp() {
         <div className="wordmark">thredori</div>
         <h1>Create your account</h1>
         <p className="intro">Make your little corner of Thredori feel like yours.</p>
-
         <label>Full name<input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" /></label>
-
         <div className="avatar-section">
           <span className="avatar-label">Profile picture</span>
           <div className="avatar-row">
@@ -72,7 +68,6 @@ export default function SignUp() {
             </div>
           </div>
         </div>
-
         <label>Email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
         <label>Password<input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} /></label>
         <button type="submit" disabled={loading}>{loading ? "Creating account..." : "Sign up"}</button>
@@ -82,7 +77,7 @@ export default function SignUp() {
         <p className="switch">Already have an account? <a href="/login">Log in</a></p>
       </form>
       <style jsx>{`
-        .auth-page { min-height: 100vh; display:flex; align-items:center; justify-content:center; padding:30px 16px; background:var(--blush); }
+        .auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:30px 16px; background:var(--blush); }
         .auth-card { background:rgba(255,253,252,.96); border:1px solid var(--cotton-line); border-radius:22px; padding:30px; width:100%; max-width:390px; display:flex; flex-direction:column; gap:12px; box-shadow:var(--shadow-soft); }
         .wordmark { font:italic 20px var(--font-voice); text-align:center; }
         h1 { font:600 22px var(--font-voice); text-align:center; margin:0; color:var(--ink); }
