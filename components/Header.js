@@ -54,7 +54,7 @@ export default function Header({ active, onChange, user, onLogout }) {
       <style jsx>{`
         header {
           border-bottom: 1px solid var(--cotton-line);
-          background: rgba(248, 228, 227, 0.78);
+          background: rgba(252, 247, 246, 0.9);
           backdrop-filter: blur(12px);
           position: relative;
           z-index: 10;
@@ -108,9 +108,6 @@ export default function Header({ active, onChange, user, onLogout }) {
           background: rgba(255, 255, 255, 0.6);
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
-        .mic-icon {
-          border-radius: 50%;
-        }
         .search {
           flex: 1;
           background: rgba(255, 253, 252, 0.96);
@@ -130,7 +127,7 @@ export default function Header({ active, onChange, user, onLogout }) {
         .auth-link {
           color: var(--ink);
           font-size: 13px;
-          background: rgba(255, 250, 249, 0.72);
+          background: rgba(255, 253, 252, 0.8);
           border: 1px solid var(--cotton-line);
           border-radius: 20px;
           padding: 7px 14px;
@@ -159,7 +156,7 @@ export default function Header({ active, onChange, user, onLogout }) {
           margin: 0 auto;
         }
         .tab {
-          background: rgba(255, 253, 252, 0.8);
+          background: rgba(255, 253, 252, 0.9);
           color: var(--muted);
           font-size: 13px;
           padding: 7px 17px;
