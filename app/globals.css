@@ -1,15 +1,20 @@
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap");
 
 :root {
-  --ink: #232019;
-  --cotton: #efe9dc;
-  --cotton-line: #d9d0bc;
+  --ink: #26344d;
+  --blush: #f8e4e3;
+  --blush-deep: #f2c9ca;
+  --blush-soft: #fcedec;
+  --cotton: #fffaf9;
+  --cotton-line: #ead8d5;
   --indigo: #2b3a55;
-  --indigo-text: #dce3ec;
-  --madder: #a13d2e;
-  --madder-text: #f6e6e0;
-  --sage: #6e7a52;
-  --muted: #8a7f6b;
+  --indigo-text: #f9fbff;
+  --madder: #c77a7d;
+  --madder-text: #fff7f7;
+  --sage: #79866b;
+  --muted: #7f7480;
+  --shadow-soft: 0 10px 28px rgba(106, 82, 88, 0.1);
+  --shadow-lift: 0 16px 34px rgba(106, 82, 88, 0.15);
   --font-voice: "Fraunces", Georgia, serif;
   --font-sans: "Inter", -apple-system, sans-serif;
 }
@@ -22,9 +27,17 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--cotton);
+  background:
+    radial-gradient(circle at 72% 10%, rgba(255, 255, 255, 0.55), transparent 28%),
+    radial-gradient(circle at 18% 88%, rgba(255, 214, 216, 0.35), transparent 26%),
+    var(--blush);
   color: var(--ink);
   font-family: var(--font-sans);
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 a {
@@ -32,8 +45,60 @@ a {
   text-decoration: none;
 }
 
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .app-content {
   margin-left: 76px;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+@keyframes softRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSoft {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(2deg);
+  }
+}
+
+@keyframes gentlePulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.page-rise {
+  animation: softRise 520ms ease-out both;
 }
 
 @media (max-width: 640px) {
@@ -42,13 +107,13 @@ a {
   }
 }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.container {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 20px;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
