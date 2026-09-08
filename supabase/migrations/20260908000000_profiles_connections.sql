@@ -16,8 +16,6 @@ create policy "Users can create their own profile"
 create policy "Users can update their own profile"
   on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 
-after insert on auth.users is not supported in plain SQL migrations, so profiles are created by the app during signup/profile load.
-
 create table if not exists public.connection_requests (
   id uuid primary key default gen_random_uuid(),
   sender_id uuid not null references public.profiles(id) on delete cascade,
