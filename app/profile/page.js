@@ -26,7 +26,7 @@ export default function Profile() {
         router.push("/login");
         return;
       }
-      const { data: profileData } = await supabase.from("profiles").select("full_name, avatar_url, avatar_seed").eq("id", data.user.id).maybeSingle();
+      const { data: profileData } = await supabase.from("profiles").select("full_name, username, description, avatar_url, avatar_seed").eq("id", data.user.id).maybeSingle();
       setProfile(profileData);
     });
   }, [router]);
@@ -69,6 +69,7 @@ export default function Profile() {
     { id: "saved", label: "Saved", count: savedPosts.length },
   ];
   const displayName = profile?.full_name?.trim() || user.user_metadata?.full_name?.trim() || "Your profile";
+  const username = profile?.username ? `@${profile.username}` : "";
   const avatar = profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : (avatarEmoji[profile?.avatar_seed] || "🌸");
 
   return (
@@ -87,16 +88,21 @@ export default function Profile() {
           <div>
             <p className="eyebrow page-rise">YOUR SPACE</p>
             <h1 className="page-rise">{displayName}</h1>
+            {username && <p className="username page-rise">{username}</p>}
+            {profile?.description && <p className="description page-rise">{profile.description}</p>}
           </div>
         </div>
-        <div className="filter-bar page-rise" aria-label="Profile content filters">
-          {filters.map((filter) => (
-            <button key={filter.id} className={`filter ${tab === filter.id ? "filter-active" : ""}`} onClick={() => setTab(filter.id)} aria-pressed={tab === filter.id}>
-              <ProfileFilterIcon type={filter.id} />
-              <span>{filter.label}</span>
-              <span className="count">{filter.count}</span>
-            </button>
-          ))}
+        <div className="profile-controls page-rise">
+          <Link href="/profile/setup" className="edit-profile">Edit profile</Link>
+          <div className="filter-bar" aria-label="Profile content filters">
+            {filters.map((filter) => (
+              <button key={filter.id} className={`filter ${tab === filter.id ? "filter-active" : ""}`} onClick={() => setTab(filter.id)} aria-pressed={tab === filter.id}>
+                <ProfileFilterIcon type={filter.id} />
+                <span>{filter.label}</span>
+                <span className="count">{filter.count}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -131,10 +137,14 @@ export default function Profile() {
         .top-avatar { width:30px; height:30px; display:grid; place-items:center; overflow:hidden; border-radius:50%; background:#fff; border:1px solid var(--cotton-line); font-size:17px; }
         .top-avatar img, .large-avatar img { width:100%; height:100%; object-fit:cover; }
         .profile-header { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; padding:28px 0 18px; }
-        .profile-title-wrap { display:flex; align-items:center; gap:13px; }
+        .profile-title-wrap { display:flex; align-items:center; gap:13px; min-width:0; }
         .large-avatar { width:54px; height:54px; display:grid; place-items:center; overflow:hidden; flex:0 0 54px; border-radius:50%; background:#fff; border:1px solid var(--cotton-line); box-shadow:var(--shadow-soft); font-size:27px; }
         .eyebrow { margin:0 0 5px; font:700 10px var(--font-sans); letter-spacing:.14em; color:var(--madder); }
         h1 { font:600 28px/1.1 var(--font-voice); margin:0; color:var(--ink); }
+        .username { margin:4px 0 0; font:11px var(--font-sans); color:var(--muted); }
+        .description { max-width:430px; margin:7px 0 0; font:12px/1.45 var(--font-sans); color:var(--muted); }
+        .profile-controls { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+        .edit-profile { border:1px solid var(--cotton-line); border-radius:18px; padding:7px 13px; background:rgba(255,253,252,.88); color:var(--ink); font:600 11px var(--font-sans); }
         .filter-bar { display:flex; align-items:center; gap:7px; padding:5px; border:1px solid var(--cotton-line); border-radius:24px; background:rgba(255,253,252,.82); box-shadow:var(--shadow-soft); }
         .filter { display:inline-flex; align-items:center; gap:7px; border:0; border-radius:19px; padding:8px 12px; background:transparent; color:var(--muted); font:600 12px var(--font-sans); cursor:pointer; transition:transform 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease; }
         .filter:hover { transform:translateY(-1px); color:var(--ink); }
@@ -155,7 +165,7 @@ export default function Profile() {
         .delete-btn { color:var(--madder); border:1px solid var(--madder); }
         .save-btn { color:var(--ink); border:1px solid var(--cotton-line); }
         .delete-btn:hover,.save-btn:hover { transform:translateY(-1px); background:#fff; }
-        @media (max-width:700px) { .profile-header { align-items:flex-start; flex-direction:column; } .filter-bar { width:100%; justify-content:space-between; } .filter { flex:1; justify-content:center; padding-left:8px; padding-right:8px; } }
+        @media (max-width:700px) { .profile-header { align-items:flex-start; flex-direction:column; } .profile-title-wrap { width:100%; } .profile-controls { width:100%; align-items:stretch; } .filter-bar { width:100%; justify-content:space-between; } .filter { flex:1; justify-content:center; padding-left:8px; padding-right:8px; } }
         @media (prefers-reduced-motion:reduce) { .filter,.card,.delete-btn,.save-btn { transition:none; } .card { animation:none; } }
       `}</style>
     </main>
