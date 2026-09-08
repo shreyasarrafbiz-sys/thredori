@@ -10,6 +10,7 @@ const avatarEmoji = { flower: "🌸", smiley: "😊", heart: "💗", sun: "🌞"
 export default function ProfileSetup() {
   const [user, setUser] = useState(null);
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [description, setDescription] = useState("");
   const [avatarSeed, setAvatarSeed] = useState("flower");
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -29,6 +30,7 @@ export default function ProfileSetup() {
       setUser(auth.user);
       const { data: profile } = await supabase.from("profiles").select("full_name, username, description, avatar_url, avatar_seed").eq("id", auth.user.id).maybeSingle();
       setFullName(profile?.full_name || auth.user.user_metadata?.full_name || "");
+      setUsername(profile?.username || "");
       setDescription(profile?.description || "");
       setAvatarSeed(profile?.avatar_seed || "flower");
       setAvatarUrl(profile?.avatar_url || null);
@@ -37,29 +39,57 @@ export default function ProfileSetup() {
     load();
   }, [router]);
 
+  function cleanUsername(value) {
+    return value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 24);
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     const trimmed = fullName.trim();
+    const clean = cleanUsername(username);
     const trimmedDescription = description.trim();
+
     if (!trimmed) {
       setMessage("Please add your name first.");
+      return;
+    }
+    if (clean.length < 3) {
+      setMessage("Your username needs at least 3 letters or numbers.");
       return;
     }
     if (trimmedDescription.length > 180) {
       setMessage("Keep your description under 180 characters.");
       return;
     }
+
     setSaving(true);
     setMessage("");
 
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("username", clean)
+      .neq("id", user.id)
+      .limit(1);
+
+    if (existing?.length) {
+      setMessage("That username is already taken. Try adding a number or a few letters.");
+      setSaving(false);
+      return;
+    }
+
     let nextAvatarUrl = avatarUrl;
     let nextAvatarSeed = avatarSeed;
+
     if (avatarFile) {
       const ext = avatarFile.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, avatarFile, {
+        upsert: false,
+        contentType: avatarFile.type,
+      });
       if (uploadError) {
-        setMessage(uploadError.message);
+        setMessage(`Profile picture upload failed: ${uploadError.message}`);
         setSaving(false);
         return;
       }
@@ -70,15 +100,22 @@ export default function ProfileSetup() {
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
       full_name: trimmed,
+      username: clean,
       description: trimmedDescription,
       avatar_url: nextAvatarUrl,
       avatar_seed: nextAvatarSeed,
     }, { onConflict: "id" });
+
     if (error) {
-      setMessage(error.message.includes("username") ? "Your profile username could not be generated. Please try again." : error.message);
+      if (error.code === "23505") {
+        setMessage("That username was just taken. Please choose another one.");
+      } else {
+        setMessage(error.message);
+      }
       setSaving(false);
       return;
     }
+
     await supabase.auth.updateUser({ data: { full_name: trimmed } });
     router.replace("/profile");
   }
@@ -91,9 +128,22 @@ export default function ProfileSetup() {
         <div className="wordmark">thredori</div>
         <p className="eyebrow">YOUR PROFILE</p>
         <h1>Edit your profile</h1>
-        <p className="intro">Change your name, little picture, and the words that introduce you.</p>
-        <label>Your name<input type="text" required autoFocus value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" /></label>
-        <label>About you<textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={180} placeholder="A little about you..." rows={3} /><small className="counter">{description.length}/180</small></label>
+        <p className="intro">Change your name, username, little picture, and the words that introduce you.</p>
+
+        <label>Full name
+          <input type="text" required autoFocus value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" />
+        </label>
+
+        <label>Username
+          <div className="username-input"><span>@</span><input type="text" required value={username} onChange={(e) => setUsername(cleanUsername(e.target.value))} placeholder="yourname" /></div>
+          <small>Letters, numbers and underscores only.</small>
+        </label>
+
+        <label>About you
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={180} placeholder="A little about you..." rows={3} />
+          <small className="counter">{description.length}/180</small>
+        </label>
+
         <div className="avatar-section">
           <span className="avatar-label">Profile picture</span>
           <div className="avatar-row">
@@ -102,11 +152,14 @@ export default function ProfileSetup() {
             </div>
             <div className="avatar-options">
               <div className="choices">{AVATARS.map((key) => <button type="button" key={key} className={avatarSeed === key && !avatarFile && !avatarUrl ? "choice active" : "choice"} onClick={() => { setAvatarSeed(key); setAvatarFile(null); setAvatarUrl(null); }} aria-label={`Choose ${key} avatar`}>{avatarEmoji[key]}</button>)}</div>
-              <label className="upload">Upload your photo<input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)} /></label>
-              {avatarUrl && <button type="button" className="remove-photo" onClick={() => setAvatarUrl(null)}>Use a cute default instead</button>}
+              <label className="upload">Upload your photo
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)} />
+              </label>
+              {avatarUrl && <button type="button" className="remove-photo" onClick={() => { setAvatarUrl(null); setAvatarFile(null); }}>Use a cute default instead</button>}
             </div>
           </div>
         </div>
+
         <button type="submit" disabled={saving}>{saving ? "Saving..." : "Save profile"}</button>
         <button type="button" className="cancel" onClick={() => router.push("/profile")} disabled={saving}>Cancel</button>
         {message && <p className="message">{message}</p>}
@@ -120,7 +173,11 @@ export default function ProfileSetup() {
         .intro { margin:-2px 0 8px; text-align:center; font:12px/1.5 var(--font-sans); color:var(--muted); }
         label, .avatar-label { font:600 12px var(--font-sans); color:var(--muted); display:flex; flex-direction:column; gap:6px; }
         input, textarea { padding:10px 12px; border-radius:12px; border:1px solid var(--cotton-line); background:#fff; font:13px var(--font-sans); color:var(--ink); resize:vertical; }
-        .counter { align-self:flex-end; margin-top:-2px; font:10px var(--font-sans); color:var(--muted); }
+        .username-input { display:flex; align-items:center; border:1px solid var(--cotton-line); border-radius:12px; background:#fff; overflow:hidden; }
+        .username-input span { padding-left:12px; color:var(--muted); font:13px var(--font-sans); }
+        .username-input input { border:0; border-radius:0; flex:1; outline:0; }
+        label small { font:10px var(--font-sans); color:var(--muted); font-weight:400; }
+        .counter { align-self:flex-end; margin-top:-2px; }
         .avatar-section { padding:12px; border:1px solid var(--cotton-line); border-radius:16px; background:var(--blush-soft); }
         .avatar-row { display:flex; gap:12px; align-items:center; margin-top:8px; }
         .avatar-preview { width:64px; height:64px; flex:0 0 64px; display:grid; place-items:center; border-radius:50%; background:#fff; border:1px solid var(--cotton-line); font-size:31px; overflow:hidden; }
