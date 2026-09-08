@@ -2,10 +2,10 @@
 
 :root {
   --ink: #26344d;
-  --blush: #f8e4e3;
+  --blush: #fcf7f6;
   --blush-deep: #f2c9ca;
-  --blush-soft: #fcedec;
-  --cotton: #fffaf9;
+  --blush-soft: #fdf3f2;
+  --cotton: #fffdfc;
   --cotton-line: #ead8d5;
   --indigo: #2b3a55;
   --indigo-text: #f9fbff;
@@ -28,8 +28,8 @@ body {
   margin: 0;
   padding: 0;
   background:
-    radial-gradient(circle at 72% 10%, rgba(255, 255, 255, 0.55), transparent 28%),
-    radial-gradient(circle at 18% 88%, rgba(255, 214, 216, 0.35), transparent 26%),
+    radial-gradient(circle at 72% 10%, rgba(255, 255, 255, 0.72), transparent 30%),
+    radial-gradient(circle at 18% 88%, rgba(255, 228, 228, 0.2), transparent 28%),
     var(--blush);
   color: var(--ink);
   font-family: var(--font-sans);
