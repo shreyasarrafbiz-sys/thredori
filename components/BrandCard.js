@@ -62,7 +62,9 @@ export default function BrandCard({ brand, user }) {
         <div className="action-row">
           <VoteControl postId={brand.id} user={user} />
           <Link href={`/post/${brand.id}`} className="comment-btn" aria-label="Open comments" title="Comments">
-            <i className="ti ti-message-circle" aria-hidden="true" />
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5c-1.2 0-2.34-.28-3.35-.78L4 20l1.78-4.9A7.47 7.47 0 0 1 5 11.5 7.5 7.5 0 1 1 20 11.5Z" />
+            </svg>
           </Link>
           <button className={`action-btn save ${saved ? "saved" : ""}`} onClick={handleSave}>{saved ? "★ Saved" : "☆ Save"}</button>
           {brand.brandLink && (
@@ -84,8 +86,8 @@ export default function BrandCard({ brand, user }) {
         .thread-title { font-size:16px; margin:4px 0; }
         .thread-body { font-size:12px; color:var(--muted); margin-bottom:6px; line-height:1.4; }
         .action-row { display:flex; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap; }
-        .comment-btn { width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--cotton-line); border-radius:50%; background:#fffdfc; color:var(--muted); font-size:15px; transition:transform 180ms ease,box-shadow 180ms ease,color 180ms ease,background 180ms ease; }
-        .comment-btn:hover { transform:translateY(-2px); box-shadow:0 6px 14px rgba(106,82,88,.1); background:var(--blush-soft); color:var(--ink); }
+        .comment-btn { width:28px; height:28px; flex:0 0 28px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--cotton-line); border-radius:50%; background:#fffdfc; color:var(--ink); font-size:15px; text-decoration:none; transition:transform 180ms ease,box-shadow 180ms ease,color 180ms ease,background 180ms ease; }
+        .comment-btn:hover { transform:translateY(-2px); box-shadow:0 6px 14px rgba(106,82,88,.1); background:var(--blush-soft); color:var(--madder); }
         .action-btn { background:#fffdfc; border:1px solid var(--cotton-line); border-radius:16px; padding:5px 10px; font-size:11px; color:var(--muted); white-space:nowrap; display:inline-flex; align-items:center; gap:4px; transition:transform 180ms ease,box-shadow 180ms ease,color 180ms ease,background 180ms ease; }
         .action-btn:hover { transform:translateY(-2px); box-shadow:0 6px 14px rgba(106,82,88,.1); background:var(--blush-soft); color:var(--ink); }
         .action-btn.save.saved { color:var(--madder); border-color:var(--blush-deep); background:var(--blush-soft); }
