@@ -4,12 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
-const AVATARS = ["flower", "smiley", "heart", "sun", "cloud", "star"];
 const avatarEmoji = { flower: "🌸", smiley: "😊", heart: "💗", sun: "🌞", cloud: "☁️", star: "⭐" };
-
-function initials(name) {
-  return (name || "Thredori").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-}
 
 function Avatar({ profile, size = 48 }) {
   const fallback = avatarEmoji[profile?.avatar_seed] || "🌸";
@@ -52,13 +47,28 @@ export default function Messages() {
     const timer = setTimeout(async () => {
       setLoading(true);
       setMessage("");
-      let request = supabase.from("profiles").select("id, full_name, avatar_url, avatar_seed").neq("id", user.id).limit(30);
-      if (query.trim()) request = request.ilike("full_name", `%${query.trim()}%`);
-      const { data, error } = await request.order("full_name", { ascending: true });
-      setProfiles(data || []);
-      if (error) setMessage("Add the profiles database setup in Supabase to enable people search.");
+      const term = query.trim();
+      let request = supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, avatar_seed")
+        .neq("id", user.id)
+        .not("full_name", "is", null)
+        .order("full_name", { ascending: true })
+        .limit(50);
+
+      if (term) {
+        request = request.ilike("full_name", `%${term}%`);
+      }
+
+      const { data, error } = await request;
+      if (error) {
+        setProfiles([]);
+        setMessage("People search needs the latest profiles setup in Supabase.");
+      } else {
+        setProfiles((data || []).filter((profile) => profile.full_name?.trim()));
+      }
       setLoading(false);
-    }, 250);
+    }, 180);
     return () => clearTimeout(timer);
   }, [query, user]);
 
@@ -74,7 +84,7 @@ export default function Messages() {
   async function sendRequest(receiverId) {
     setMessage("");
     const existing = requestByPerson.get(receiverId);
-    if (existing?.status === "pending") return;
+    if (existing?.status === "pending" || existing?.status === "accepted") return;
     const { error } = await supabase.from("connection_requests").insert({ sender_id: user.id, receiver_id: receiverId });
     if (error) {
       if (error.code === "23505") setMessage("A connection request already exists.");
@@ -100,7 +110,7 @@ export default function Messages() {
           <div>
             <p className="eyebrow">THREDORI CIRCLE</p>
             <h1>Find your people <span>♡</span></h1>
-            <p className="subtitle">Search the Thredori community and connect with people who share your taste.</p>
+            <p className="subtitle">Search by a fellow Thredori member's full name and send a connection request.</p>
           </div>
         </header>
 
@@ -118,7 +128,7 @@ export default function Messages() {
 
         <div className="search-box">
           <span>⌕</span>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by full name..." aria-label="Search people" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search a fellow user's name..." aria-label="Search people by name" />
           {query && <button onClick={() => setQuery("")} aria-label="Clear search">×</button>}
         </div>
 
@@ -131,8 +141,8 @@ export default function Messages() {
               return (
                 <article className="person-card" key={profile.id}>
                   <Avatar profile={profile} size={62} />
-                  <div className="person-name">{profile.full_name || "Thredori friend"}</div>
-                  <div className="handle">@{profile.id.slice(0, 8)}</div>
+                  <div className="person-name">{profile.full_name}</div>
+                  <div className="handle">Thredori member</div>
                   {state === "Respond" ? <button className="connect" onClick={() => respondToRequest(request, "accepted")}>Accept request</button> : state ? <span className="connected">{state}</span> : <button className="connect" onClick={() => sendRequest(profile.id)}>♡ Connect</button>}
                 </article>
               );
@@ -175,7 +185,7 @@ export default function Messages() {
         .person-name { margin-top: 10px; font: 600 14px var(--font-voice); color: var(--ink); }
         .handle { margin: 3px 0 12px; font: 10px var(--font-sans); color: var(--muted); }
         .connected { padding: 7px 12px; border-radius: 18px; background: var(--blush-soft); color: var(--muted); font: 600 11px var(--font-sans); }
-        @media (max-width: 620px) { .page { padding: 30px 16px 60px; } h1 { font-size: 28px; } .request-row { align-items: flex-start; flex-direction: column; } }
+        @media (max-width: 620px) { .page { padding: 30px 16px 90px; } h1 { font-size: 28px; } .request-row { align-items: flex-start; flex-direction: column; } }
       `}</style>
     </main>
   );
