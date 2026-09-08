@@ -10,7 +10,9 @@ const avatarEmoji = { flower: "🌸", smiley: "😊", heart: "💗", sun: "🌞"
 export default function ProfileSetup() {
   const [user, setUser] = useState(null);
   const [fullName, setFullName] = useState("");
+  const [description, setDescription] = useState("");
   const [avatarSeed, setAvatarSeed] = useState("flower");
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -25,9 +27,11 @@ export default function ProfileSetup() {
         return;
       }
       setUser(auth.user);
-      const { data: profile } = await supabase.from("profiles").select("full_name, avatar_url, avatar_seed").eq("id", auth.user.id).maybeSingle();
+      const { data: profile } = await supabase.from("profiles").select("full_name, username, description, avatar_url, avatar_seed").eq("id", auth.user.id).maybeSingle();
       setFullName(profile?.full_name || auth.user.user_metadata?.full_name || "");
+      setDescription(profile?.description || "");
       setAvatarSeed(profile?.avatar_seed || "flower");
+      setAvatarUrl(profile?.avatar_url || null);
       setLoading(false);
     }
     load();
@@ -36,13 +40,20 @@ export default function ProfileSetup() {
   async function handleSave(e) {
     e.preventDefault();
     const trimmed = fullName.trim();
+    const trimmedDescription = description.trim();
     if (!trimmed) {
       setMessage("Please add your name first.");
       return;
     }
+    if (trimmedDescription.length > 180) {
+      setMessage("Keep your description under 180 characters.");
+      return;
+    }
     setSaving(true);
     setMessage("");
-    let avatarUrl = null;
+
+    let nextAvatarUrl = avatarUrl;
+    let nextAvatarSeed = avatarSeed;
     if (avatarFile) {
       const ext = avatarFile.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${user.id}/avatar-${Date.now()}.${ext}`;
@@ -52,21 +63,24 @@ export default function ProfileSetup() {
         setSaving(false);
         return;
       }
-      avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      nextAvatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      nextAvatarSeed = "";
     }
+
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
       full_name: trimmed,
-      avatar_url: avatarUrl,
-      avatar_seed: avatarFile ? "" : avatarSeed,
+      description: trimmedDescription,
+      avatar_url: nextAvatarUrl,
+      avatar_seed: nextAvatarSeed,
     }, { onConflict: "id" });
     if (error) {
-      setMessage(error.message);
+      setMessage(error.message.includes("username") ? "Your profile username could not be generated. Please try again." : error.message);
       setSaving(false);
       return;
     }
     await supabase.auth.updateUser({ data: { full_name: trimmed } });
-    router.replace("/");
+    router.replace("/profile");
   }
 
   if (loading) return null;
@@ -75,21 +89,26 @@ export default function ProfileSetup() {
     <main className="setup-page">
       <form onSubmit={handleSave} className="setup-card">
         <div className="wordmark">thredori</div>
-        <p className="eyebrow">ONE LITTLE STEP</p>
-        <h1>Make your profile yours</h1>
-        <p className="intro">Tell us what you'd like people to call you, then pick a little picture.</p>
+        <p className="eyebrow">YOUR PROFILE</p>
+        <h1>Edit your profile</h1>
+        <p className="intro">Change your name, little picture, and the words that introduce you.</p>
         <label>Your name<input type="text" required autoFocus value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" /></label>
+        <label>About you<textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={180} placeholder="A little about you..." rows={3} /><small className="counter">{description.length}/180</small></label>
         <div className="avatar-section">
           <span className="avatar-label">Profile picture</span>
           <div className="avatar-row">
-            <div className="avatar-preview">{avatarFile ? <img src={URL.createObjectURL(avatarFile)} alt="" /> : avatarEmoji[avatarSeed]}</div>
+            <div className="avatar-preview">
+              {avatarFile ? <img src={URL.createObjectURL(avatarFile)} alt="" /> : avatarUrl ? <img src={avatarUrl} alt="" /> : avatarEmoji[avatarSeed]}
+            </div>
             <div className="avatar-options">
-              <div className="choices">{AVATARS.map((key) => <button type="button" key={key} className={avatarSeed === key && !avatarFile ? "choice active" : "choice"} onClick={() => { setAvatarSeed(key); setAvatarFile(null); }} aria-label={`Choose ${key} avatar`}>{avatarEmoji[key]}</button>)}</div>
+              <div className="choices">{AVATARS.map((key) => <button type="button" key={key} className={avatarSeed === key && !avatarFile && !avatarUrl ? "choice active" : "choice"} onClick={() => { setAvatarSeed(key); setAvatarFile(null); setAvatarUrl(null); }} aria-label={`Choose ${key} avatar`}>{avatarEmoji[key]}</button>)}</div>
               <label className="upload">Upload your photo<input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)} /></label>
+              {avatarUrl && <button type="button" className="remove-photo" onClick={() => setAvatarUrl(null)}>Use a cute default instead</button>}
             </div>
           </div>
         </div>
-        <button type="submit" disabled={saving}>{saving ? "Saving..." : "Continue to Thredori"}</button>
+        <button type="submit" disabled={saving}>{saving ? "Saving..." : "Save profile"}</button>
+        <button type="button" className="cancel" onClick={() => router.push("/profile")} disabled={saving}>Cancel</button>
         {message && <p className="message">{message}</p>}
       </form>
       <style jsx>{`
@@ -100,7 +119,8 @@ export default function ProfileSetup() {
         h1 { font:600 24px var(--font-voice); text-align:center; margin:0; color:var(--ink); }
         .intro { margin:-2px 0 8px; text-align:center; font:12px/1.5 var(--font-sans); color:var(--muted); }
         label, .avatar-label { font:600 12px var(--font-sans); color:var(--muted); display:flex; flex-direction:column; gap:6px; }
-        input { padding:10px 12px; border-radius:12px; border:1px solid var(--cotton-line); background:#fff; font:13px var(--font-sans); color:var(--ink); }
+        input, textarea { padding:10px 12px; border-radius:12px; border:1px solid var(--cotton-line); background:#fff; font:13px var(--font-sans); color:var(--ink); resize:vertical; }
+        .counter { align-self:flex-end; margin-top:-2px; font:10px var(--font-sans); color:var(--muted); }
         .avatar-section { padding:12px; border:1px solid var(--cotton-line); border-radius:16px; background:var(--blush-soft); }
         .avatar-row { display:flex; gap:12px; align-items:center; margin-top:8px; }
         .avatar-preview { width:64px; height:64px; flex:0 0 64px; display:grid; place-items:center; border-radius:50%; background:#fff; border:1px solid var(--cotton-line); font-size:31px; overflow:hidden; }
@@ -111,7 +131,9 @@ export default function ProfileSetup() {
         .choice.active { border-color:var(--madder); box-shadow:0 0 0 2px rgba(199,122,125,.15); }
         .upload { margin-top:7px; display:block; font:11px var(--font-sans); color:var(--indigo); cursor:pointer; }
         .upload input { display:none; }
+        .remove-photo { margin-top:7px; padding:0; border:0; background:transparent; color:var(--muted); font:10px var(--font-sans); cursor:pointer; }
         form > button { margin-top:5px; background:var(--indigo); color:var(--indigo-text); border:0; border-radius:20px; padding:10px; font:600 13px var(--font-sans); cursor:pointer; }
+        form > .cancel { margin-top:0; background:transparent; color:var(--muted); border:1px solid var(--cotton-line); }
         button:disabled { opacity:.6; cursor:default; }
         .message { font:12px var(--font-sans); color:var(--madder); text-align:center; margin:0; }
       `}</style>
