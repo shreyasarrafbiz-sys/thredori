@@ -31,7 +31,18 @@ export default function Home() {
     const to = from + PAGE_SIZE - 1;
     const { data, error } = await supabase.from("posts").select("*").order("created_at", { ascending: false }).range(from, to);
     if (error || !data) return [];
-    return data.map((p) => ({ id: p.id, name: p.brand_name, category: p.category, note: p.post_type === "thread" ? p.body : p.note, location: "", color: "#8A7F6B", image: p.image_url, postType: p.post_type, isReal: true }));
+    return data.map((p) => ({
+      id: p.id,
+      name: p.brand_name,
+      category: p.category,
+      note: p.post_type === "thread" ? p.body : p.note,
+      location: "",
+      color: "#8A7F6B",
+      image: p.image_url,
+      brandLink: p.brand_link,
+      postType: p.post_type,
+      isReal: true
+    }));
   }, []);
 
   useEffect(() => {
@@ -71,7 +82,7 @@ export default function Home() {
   const combined = hasMore ? posts : [...posts, ...seedWithFlag];
   const query = search.trim().toLowerCase();
   const searched = query
-    ? combined.filter((b) => [b.name, b.category, b.note, b.location, b.postType].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)))
+    ? combined.filter((b) => [b.name, b.category, b.note, b.location, b.postType, b.brandLink].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)))
     : combined;
   const filtered = active === "All" ? searched : searched.filter((b) => b.category === active);
 
@@ -85,9 +96,7 @@ export default function Home() {
         <span className="decor decor-flower-two">✽</span>
         <span className="decor decor-heart-two">♥</span>
       </div>
-
       <Header active={active} onChange={setActive} user={user} onLogout={handleLogout} searchValue={search} onSearch={setSearch} />
-
       <section className="intro container">
         <PaperPlane />
         <div className="intro-copy page-rise">
@@ -95,23 +104,18 @@ export default function Home() {
           <p>Discover independent Indian fashion & home labels — before they’re everywhere.</p>
         </div>
       </section>
-
       {loadingPosts ? (
         <p className="loading container">Loading...</p>
       ) : filtered.length === 0 ? (
         <p className="loading container">No finds match “{search.trim()}”. Try a label, style, maker, or category.</p>
       ) : (
         <>
-          <section className="grid container">
-            {filtered.map((brand) => <BrandCard key={brand.id} brand={brand} user={user} />)}
-          </section>
+          <section className="grid container">{filtered.map((brand) => <BrandCard key={brand.id} brand={brand} user={user} />)}</section>
           <div ref={sentinelRef} className="sentinel" />
           {loadingMore && <p className="loading container">Loading more...</p>}
         </>
       )}
-
       <footer className="container"><p>Thredori · Curated, not algorithm-fed.</p></footer>
-
       <style jsx>{`
         .floating-decor { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
         .decor { position:absolute; display:block; font-family:Georgia,serif; color:var(--madder); opacity:.62; animation:floatSoft 6s ease-in-out infinite; }
