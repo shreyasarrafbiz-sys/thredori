@@ -13,11 +13,7 @@ export default function Login() {
 
   async function ensureProfile(user) {
     const fullName = user.user_metadata?.full_name || "";
-    await supabase.from("profiles").upsert({
-      id: user.id,
-      full_name: fullName,
-      avatar_seed: "flower",
-    }, { onConflict: "id", ignoreDuplicates: true });
+    await supabase.from("profiles").upsert({ id: user.id, full_name: fullName, avatar_seed: "flower" }, { onConflict: "id", ignoreDuplicates: true });
   }
 
   async function handleLogin(e) {
@@ -35,10 +31,11 @@ export default function Login() {
   }
 
   async function handleGoogleLogin() {
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: `${window.location.origin}/profile/setup` },
     });
+    if (error) setMessage(error.message);
   }
 
   return (
