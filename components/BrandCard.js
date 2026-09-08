@@ -77,45 +77,63 @@ export default function BrandCard({ brand, user }) {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  // A text-only discussion thread has no photo at all — it should never
+  // get an image box or a placeholder color block. Only real brand-find
+  // posts (or the photo a thread author chose to attach) get a frame.
+  const isTextOnlyThread = brand.isReal && brand.postType === "thread" && !brand.image;
+
   const media = brand.image ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={brand.image} alt={brand.name} className="brand-photo" />
-  ) : (
+    // Polaroid-style frame: white border, thicker at the bottom, subtle
+    // shadow — wraps the real photo at its natural aspect ratio.
+    <div className="polaroid">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={brand.image} alt={brand.name} className="brand-photo" />
+    </div>
+  ) : brand.isReal ? null : (
+    // Only the old placeholder/seed brands (none currently in data/brands.js)
+    // fall back to a solid color block. Real posts never do.
     <div className="media-placeholder" style={{ background: brand.color, height: 150 }} />
   );
 
   return (
     <div className="brand-card">
-      <div className="brand-card-hole" />
-      {brand.isReal ? (
-        <Link href={`/post/${brand.id}`} className="media-link">
-          {media}
+      {media &&
+        (brand.isReal ? (
+          <Link href={`/post/${brand.id}`} className="media-link">
+            {media}
+          </Link>
+        ) : (
+          media
+        ))}
+
+      {isTextOnlyThread ? (
+        <Link href={`/post/${brand.id}`} className="thread-link">
+          <div className="thread-title">{brand.name}</div>
+          {brand.note && <div className="thread-body">{brand.note}</div>}
         </Link>
       ) : (
-        media
+        <>
+          <div className="brand-card-name">{brand.name}</div>
+          <div className="brand-card-note">{brand.note}</div>
+          <div className="brand-card-footer">
+            <span className="brand-card-location">{brand.location}</span>
+          </div>
+        </>
       )}
-      <div className="brand-card-name">{brand.name}</div>
-      <div className="brand-card-note">{brand.note}</div>
-      <div className="brand-card-footer">
-        <span className="brand-card-location">{brand.location}</span>
-      </div>
 
       {brand.isReal && (
         <div className="action-row">
           <VoteControl postId={brand.id} user={user} />
 
           <Link href={`/post/${brand.id}`} className="action-btn">
-            💬 {commentCount}
+            <i className="ti ti-message-circle" aria-hidden="true" /> {commentCount}
           </Link>
 
           <button className="action-btn" onClick={handleShare}>
-            {copied ? "Copied!" : "🔗 Share"}
+            {copied ? "Copied!" : "Share"}
           </button>
 
-          <button
-            className={`action-btn save ${saved ? "saved" : ""}`}
-            onClick={handleSave}
-          >
+          <button className={`action-btn save ${saved ? "saved" : ""}`} onClick={handleSave}>
             {saved ? "★ Saved" : "☆ Save"}
           </button>
         </div>
@@ -129,18 +147,11 @@ export default function BrandCard({ brand, user }) {
           margin-bottom: 12px;
           padding: 10px 10px 12px;
         }
-        .brand-card-hole {
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          background: var(--cotton);
-          border: 1px solid var(--cotton-line);
-          margin: 0 auto 6px;
-        }
         .brand-card-name {
           font-family: var(--font-voice);
           font-size: 14px;
           color: var(--ink);
+          margin-top: 4px;
         }
         .brand-card-note {
           font-size: 11px;
@@ -159,6 +170,18 @@ export default function BrandCard({ brand, user }) {
           padding: 2px 8px;
           border-radius: 10px;
         }
+        .thread-title {
+          font-family: var(--font-voice);
+          font-size: 16px;
+          color: var(--ink);
+          margin: 4px 0 4px;
+        }
+        .thread-body {
+          font-size: 12px;
+          color: var(--muted);
+          margin-bottom: 6px;
+          line-height: 1.4;
+        }
         .action-row {
           display: flex;
           align-items: center;
@@ -174,6 +197,9 @@ export default function BrandCard({ brand, user }) {
           font-size: 11px;
           color: var(--muted);
           white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
         }
         .action-btn.save.saved {
           color: var(--madder);
@@ -182,15 +208,22 @@ export default function BrandCard({ brand, user }) {
       `}</style>
 
       <style jsx global>{`
-        .media-link {
+        .media-link,
+        .thread-link {
           display: block;
+        }
+        .polaroid {
+          background: #fff;
+          padding: 8px 8px 24px;
+          border: 1px solid var(--cotton-line);
+          border-radius: 2px;
+          box-shadow: 0 1px 3px rgba(35, 32, 25, 0.08);
+          margin-bottom: 8px;
         }
         .brand-photo {
           display: block;
           width: 100%;
           height: auto;
-          border-radius: 4px;
-          margin-bottom: 8px;
         }
         .media-placeholder {
           width: 100%;

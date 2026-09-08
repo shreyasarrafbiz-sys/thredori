@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Header from "../components/Header";
 import BrandCard from "../components/BrandCard";
+import PaperPlane from "../components/PaperPlane";
 import { brands as seedBrands } from "../data/brands";
 import { supabase } from "../lib/supabaseClient";
 
@@ -42,10 +43,11 @@ export default function Home() {
       id: p.id,
       name: p.brand_name,
       category: p.category,
-      note: p.note,
+      note: p.post_type === "thread" ? p.body : p.note,
       location: "",
       color: "#8A7F6B",
       image: p.image_url,
+      postType: p.post_type,
       isReal: true,
     }));
   }, []);
@@ -98,6 +100,7 @@ export default function Home() {
       <Header active={active} onChange={setActive} user={user} onLogout={handleLogout} />
 
       <section className="intro container">
+        <PaperPlane />
         <p>Discover independent Indian fashion & home labels — before they’re everywhere.</p>
       </section>
 
@@ -122,6 +125,8 @@ export default function Home() {
       <style jsx>{`
         .intro {
           padding: 18px 20px 6px;
+          position: relative;
+          overflow: hidden;
         }
         .intro p {
           font-size: 13px;

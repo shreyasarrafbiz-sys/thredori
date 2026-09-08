@@ -1,31 +1,45 @@
-# Image sizing fix
+# Thredori — polish batch (placeholders, polaroid frame, plane animation, thread fix)
 
-## What was wrong
-Every card forced its image into a fixed-height box using
-`background-size: cover`, which crops photos to fit — that's why
-Nishorama's portrait photo looked chopped in half. True Pinterest
-masonry never crops; it lets each photo keep its own natural shape,
-and the different resulting heights are what create the staggered
-look.
+## 1. Placeholders removed
+`data/brands.js` — emptied. The feed now shows only real posts. **This
+does not touch or delete any real posts people have uploaded** — it
+only removes the old sample data (Alonge, Baaya Design, etc.) that was
+mixed in as filler.
 
-## What changed
-- `components/BrandCard.js` — real posts (ones with an uploaded photo)
-  now render as an actual `<img>` at `width: 100%, height: auto`, so
-  the photo displays at its true proportions, whatever they are.
-  Placeholder/seed brands with no real photo still show a fixed-height
-  solid color block, since there's nothing to size against.
-- `app/page.js` — removed the old fixed-height array that used to be
-  passed to every card; no longer needed since cards size themselves.
+## 2. Polaroid-style photo frame
+`components/BrandCard.js` — every real photo now sits inside a white
+frame with extra padding at the bottom and a subtle shadow, like an
+actual Polaroid print, instead of a plain edge-to-edge image.
+
+## 3. Pink paper plane animation
+`components/PaperPlane.js` — new. A small pink paper plane flies across
+the tagline text on the homepage, fades in and out, loops every 9
+seconds. Respects `prefers-reduced-motion` (turns off automatically for
+anyone with that accessibility setting on) — this is a real
+accessibility need, not optional polish, since motion can trigger
+discomfort or dizziness for some users, and it's now standard practice
+to honor it.
+
+## 4. Fixed: text-only discussion threads no longer show a blank box
+This was the actual bug. Previously, `BrandCard.js` always tried to
+render an image or a solid-color placeholder box — so a thread post
+with no photo showed an empty/odd-looking colored block above its
+text. Now: if a real post is a discussion thread (`post_type ===
+'thread'`) with no photo attached, it skips the image entirely and
+shows just the title and body text, followed by the same action row
+(vote, comment, share, save) as every other post.
+
+This required two small changes beyond `BrandCard.js`:
+- `app/page.js` — now passes `post_type` through to each card
+- `app/trending/page.js` — recreated with the same fix (it renders
+  cards too, so it needed the same data field passed through)
+
+**None of this touches your database or existing posts** — it's
+purely how they're displayed.
 
 ## Upload
-1. Go to your `thredori` GitHub repo
-2. Go into the `components` folder, upload `BrandCard.js`, confirm the
-   overwrite
-3. Go into the `app` folder, upload `page.js`, confirm the overwrite
-4. Commit both, Vercel auto-redeploys
-
-## Note
-This only affects the main feed grid. If you want the individual post
-detail page (`/post/[id]`) to also show the un-cropped photo instead
-of its current fixed 420px crop, let me know and I'll fix that one too
-— it's a similar change but in a different file.
+1. `data/brands.js` → upload into your repo's `data` folder, confirm overwrite
+2. `components/BrandCard.js` and `components/PaperPlane.js` (new) → upload into `components`
+3. `app/page.js` → upload into `app`, confirm overwrite
+4. `app/trending/page.js` → upload into `app/trending`, confirm overwrite
+5. Commit each batch — Vercel auto-redeploys

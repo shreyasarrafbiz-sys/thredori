@@ -1,5 +1,3 @@
-// Seed content for the Thredori feed.
-// Replace `color` with a real product photo URL once brands confirm permission —
-// see the `image` field, which falls back to a solid color block when empty.
-
+// Seed/placeholder content has been removed. The feed now shows only
+// real posts from your database.
 export const brands = [];
