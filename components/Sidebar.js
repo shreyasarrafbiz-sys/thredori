@@ -23,7 +23,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <nav className="sidebar">
+    <nav className="sidebar" aria-label="Main navigation">
       <div className="sidebar-bloom" aria-hidden="true">✿</div>
       {items.map((item) => {
         const active = pathname === item.href;
@@ -88,16 +88,39 @@ export default function Sidebar() {
           background: var(--blush);
           box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 6px 15px rgba(106,82,88,.08);
         }
-        .icon {
-          display: flex;
-        }
-        .label {
-          font-size: 10px;
-        }
+        .icon { display: flex; }
+        .label { font-size: 10px; }
+
         @media (max-width: 640px) {
           .sidebar {
-            display: none;
+            top: auto;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: calc(64px + env(safe-area-inset-bottom));
+            padding: 5px 8px env(safe-area-inset-bottom);
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: stretch;
+            gap: 2px;
+            background: rgba(255, 253, 252, 0.94);
+            border-right: 0;
+            border-top: 1px solid var(--cotton-line);
+            box-shadow: 0 -8px 24px rgba(106, 82, 88, 0.08);
           }
+          .sidebar-bloom { display: none; }
+          .sidebar-item {
+            width: 20%;
+            max-width: 82px;
+            padding: 5px 3px;
+            gap: 2px;
+            border-radius: 12px;
+            justify-content: center;
+          }
+          .sidebar-item:hover { transform: none; }
+          .sidebar-item.active { box-shadow: none; }
+          .icon svg { width: 21px; height: 21px; }
+          .label { font-size: 9px; }
         }
       `}</style>
     </nav>
