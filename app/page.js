@@ -101,7 +101,7 @@ export default function Home() {
         <PaperPlane />
         <div className="intro-copy page-rise">
           <span className="eyebrow">a little corner for good finds</span>
-          <p>Discover independent Indian fashion & home labels — before they’re everywhere.</p>
+          <p>Found something good? Share it before everyone else does.</p>
         </div>
       </section>
       {loadingPosts ? (
