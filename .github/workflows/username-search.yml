@@ -1,0 +1,38 @@
+name: Apply username search
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: contains(github.event.head_commit.message, 'Apply username search')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch messages search
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/messages/page.js')
+          s = p.read_text()
+          s = s.replace('select("id, full_name, avatar_url, avatar_seed")', 'select("id, full_name, username, avatar_url, avatar_seed")')
+          s = s.replace('const term = query.trim();', 'const term = query.trim();\n      const safeTerm = term.replace(/[,()%]/g, "");')
+          s = s.replace('if (term) request = request.ilike("full_name", `%${term}%`);', 'if (term) request = request.or(`full_name.ilike.%${safeTerm}%,username.ilike.%${safeTerm}%`);')
+          s = s.replace('(data || []).filter((p) => p.full_name?.trim())', '(data || []).filter((p) => p.full_name?.trim() || p.username?.trim())')
+          s = s.replace('Search by a fellow Thredori member\'s full name, connect, and start a conversation.', 'Search by full name or @username, connect, and start a conversation.')
+          s = s.replace('placeholder="Search a fellow user\'s name..."', 'placeholder="Search by name or @username..."')
+          s = s.replace('<div className="handle">Thredori member</div>', '<div className="handle">{p.username ? `@${p.username}` : "Thredori member"}</div>')
+          p.write_text(s)
+          PY
+      - name: Commit and remove one-off workflow
+        run: |
+          rm .github/workflows/username-search.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/messages/page.js .github/workflows/username-search.yml
+          git commit -m "Enable name and username people search [skip ci]"
+          git push
