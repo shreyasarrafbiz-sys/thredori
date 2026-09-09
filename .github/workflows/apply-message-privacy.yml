@@ -1,4 +1,4 @@
-name: Apply message page name privacy
+name: Apply message page connection privacy
 
 on:
   push:
@@ -16,34 +16,82 @@ jobs:
         with:
           ref: main
           fetch-depth: 1
-      - name: Blur unconnected user names
+
+      - name: Limit people list to accepted connections
         shell: python
         run: |
           from pathlib import Path
+
           p = Path("app/messages/page.js")
           s = p.read_text()
-          old = '''  const requestByPerson = useMemo(() => { const map = new Map(); requests.forEach((r) => map.set(r.sender_id === user?.id ? r.receiver_id : r.sender_id, r)); return map; }, [requests, user]);'''
-          new = '''  const requestByPerson = useMemo(() => { const map = new Map(); requests.forEach((r) => map.set(r.sender_id === user?.id ? r.receiver_id : r.sender_id, r)); return map; }, [requests, user]);
-  const isAcceptedConnection = (personId) => requests.some((r) => r.status === "accepted" && ((r.sender_id === user?.id && r.receiver_id === personId) || (r.sender_id === personId && r.receiver_id === user?.id)));'''
+
+          old = '''  useEffect(() => {
+    if (!user) return;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      const term = query.trim();
+      const safeTerm = term.replace(/[,()%]/g, "");
+      let request = supabase.from("profiles").select("id, full_name, username, avatar_url, avatar_seed").neq("id", user.id).not("full_name", "is", null).order("full_name").limit(50);
+      if (term) request = request.or(`full_name.ilike.%${safeTerm}%,username.ilike.%${safeTerm}%`);
+      const { data, error } = await request;
+      setProfiles(error ? [] : (data || []).filter((p) => p.full_name?.trim() || p.username?.trim()));
+      if (error) setMessage("People search needs the latest profiles setup in Supabase.");
+      setLoading(false);
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [query, user]);'''
+
+          new = '''  useEffect(() => {
+    if (!user) return;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      const term = query.trim();
+      const safeTerm = term.replace(/[,()%]/g, "");
+      const acceptedIds = Array.from(new Set(requests.filter((r) => r.status === "accepted" && (r.sender_id === user.id || r.receiver_id === user.id)).map((r) => r.sender_id === user.id ? r.receiver_id : r.sender_id)));
+
+      if (!term && acceptedIds.length === 0) {
+        setProfiles([]);
+        setLoading(false);
+        return;
+      }
+
+      let request = supabase.from("profiles").select("id, full_name, username, avatar_url, avatar_seed").neq("id", user.id).not("full_name", "is", null).order("full_name").limit(50);
+      if (term) {
+        request = request.or(`full_name.ilike.%${safeTerm}%,username.ilike.%${safeTerm}%`);
+      } else {
+        request = request.in("id", acceptedIds);
+      }
+
+      const { data, error } = await request;
+      setProfiles(error ? [] : (data || []).filter((p) => p.full_name?.trim() || p.username?.trim()));
+      if (error) setMessage("People search needs the latest profiles setup in Supabase.");
+      setLoading(false);
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [query, user, requests]);'''
+
           if old not in s:
-            raise SystemExit("requestByPerson block not found")
+            raise SystemExit("people query block not found")
           s = s.replace(old, new, 1)
-          old = '''<div className="person-name">{p.full_name}</div><div className="handle">{p.username ? `@${p.username}` : "Thredori member"}</div>'''
-          new = '''<div className={`person-name ${isAcceptedConnection(p.id) ? "" : "private-name"}`}>{p.full_name || "Thredori member"}</div><div className={`handle ${isAcceptedConnection(p.id) ? "" : "private-name"}`}>{p.username ? `@${p.username}` : "Thredori member"}</div>'''
+
+          old = '''      <header className="header"><p className="eyebrow">THREDORI CIRCLE</p><h1>Find your people <span>♡</span></h1><p className="subtitle">Search by full name or @username, connect, and start a conversation.</p></header>'''
+          new = '''      <header className="header"><p className="eyebrow">THREDORI CIRCLE</p><h1>Your circle <span>♡</span></h1><p className="subtitle">Only your accepted connections appear here. Search by full name or @username to find someone new.</p></header>'''
           if old not in s:
-            raise SystemExit("person name block not found")
+            raise SystemExit("header block not found")
           s = s.replace(old, new, 1)
-          old = '''.page{min-height:100vh;padding:54px 28px 80px;background:var(--blush)}.shell{width:min(920px,100%);margin:auto}.header{margin-bottom:24px}'''
-          new = '''.page{min-height:100vh;padding:54px 28px 80px;background:var(--blush)}.shell{width:min(920px,100%);margin:auto}.header{margin-bottom:24px}.private-name{filter:blur(5px);user-select:none}'''
+
+          old = '''{message&&<p className="message">{message}</p>}{loading?<p className="status">Finding lovely humans...</p>:profiles.length===0?<p className="status">{query?"No one found with that name yet.":"Search for a friend to get started."}</p>:<div className="people-grid">'''
+          new = '''{message&&<p className="message">{message}</p>}{loading?<p className="status">Finding lovely humans...</p>:profiles.length===0?<p className="status">{query?"No one found with that name yet.":"No connections yet. Search for someone by name or @username to get started."}</p>:<div className="people-grid">'''
           if old not in s:
-            raise SystemExit("style anchor not found")
+            raise SystemExit("empty state block not found")
           s = s.replace(old, new, 1)
+
           p.write_text(s)
-      - name: Commit privacy fix
+      - name: Commit connection privacy fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/messages/page.js
           git diff --cached --quiet && exit 0
-          git commit -m "Blur names of unconnected users"
+          git commit -m "Show only accepted connections on messages page"
           git push origin main
