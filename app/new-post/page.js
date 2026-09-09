@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 
 async function imageToModerationDataUrl(file) {
@@ -42,6 +43,7 @@ export default function NewPost() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [showPolicies, setShowPolicies] = useState(true);
+  const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function NewPost() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !rightsConfirmed) return;
     setLoading(true);
     setMessage("");
 
@@ -126,8 +128,15 @@ export default function NewPost() {
   if (!user) {
     return (
       <main className="auth-page">
-        <div className="auth-card"><p>You need to be logged in to post.</p><a className="link-button" href="/login">Log in</a></div>
-        <style jsx>{`.auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--cotton)}.auth-card{background:#fff;border-radius:10px;padding:32px;text-align:center}.link-button{display:inline-block;margin-top:12px;background:var(--indigo);color:var(--indigo-text);padding:10px 20px;border-radius:20px;font-size:14px}`}</style>
+        <div className="auth-card">
+          <p>You need to be logged in to post.</p>
+          <a className="link-button" href="/login">Log in</a>
+        </div>
+        <style jsx>{`
+          .auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--cotton); }
+          .auth-card { background:#fff; border-radius:10px; padding:32px; text-align:center; }
+          .link-button { display:inline-block; margin-top:12px; background:var(--indigo); color:var(--indigo-text); padding:10px 20px; border-radius:20px; font-size:14px; }
+        `}</style>
       </main>
     );
   }
@@ -139,14 +148,17 @@ export default function NewPost() {
         <h1>New post</h1>
 
         {showPolicies && (
-          <div className="policy-popover" role="note">
-            <button type="button" className="close-policy" aria-label="Close posting policies" onClick={() => setShowPolicies(false)}>×</button>
+          <div className="policy-pop" role="note">
+            <button type="button" className="close-policy" onClick={() => setShowPolicies(false)} aria-label="Close posting policies">×</button>
             <div className="policy-title">Before you post ✦</div>
-            <p><strong>Keep it original.</strong> Please upload photos you took yourself or content you have permission to share.</p>
-            <p>Do <strong>not</strong> copy, screenshot or download a product image directly from a brand website, app, catalogue or social account and repost it here.</p>
-            <p>You can wear the item, style it, photograph it in your own home or setting, show it in use, or otherwise create your own original image.</p>
-            <p>No nudity, sexual, harmful, hateful, violent, self-harm, illegal, spam or unrelated content.</p>
-            <Link href="/policies" className="read-more">Read all posting policies →</Link>
+            <p>Thredori is a user-generated community. Please upload content you have the right to share.</p>
+            <ul>
+              <li>Use your own photos or content you have permission to share.</li>
+              <li>Do not copy product photos, campaign images or catalogue images directly from a brand website, app or social account.</li>
+              <li>You can photograph yourself wearing, styling or using the product, or photograph it in your own setting.</li>
+              <li>No nude, sexual, harmful, hateful, violent, self-harm or illegal content.</li>
+            </ul>
+            <Link href="/policies" className="policy-link">Read all posting policies →</Link>
           </div>
         )}
 
@@ -173,13 +185,41 @@ export default function NewPost() {
           </>
         )}
 
-        <button type="submit" disabled={loading}>{loading ? "Checking..." : "Post"}</button>
-        <p className="moderation-note">Posts are checked for unsafe content before publishing.</p>
+        <label className="rights-check">
+          <input type="checkbox" checked={rightsConfirmed} onChange={(e) => setRightsConfirmed(e.target.checked)} />
+          <span>I confirm that this is my own content or that I have permission/right to share it.</span>
+        </label>
+
+        <button type="submit" disabled={loading || !rightsConfirmed}>{loading ? "Checking..." : "Post"}</button>
+        <p className="moderation-note">Every post is checked for unsafe, sexual, harmful, hateful, violent, self-harm, and illegal content before it can be published.</p>
         {message && <p className="message">{message}</p>}
       </form>
 
       <style jsx>{`
-        .page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--cotton);padding:24px 0}.form-card{background:#fff;border-radius:10px;padding:32px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:12px}.wordmark{font-family:var(--font-voice);font-style:italic;font-size:20px;text-align:center}h1{font-family:var(--font-voice);font-size:18px;font-weight:500;text-align:center;margin:0 0 4px}.type-toggle{display:flex;gap:8px;margin-bottom:8px}.type-toggle button{flex:1;background:var(--cotton);color:var(--muted);border:1px solid var(--cotton-line);border-radius:20px;padding:8px;font-size:12px}.type-toggle button.active{background:var(--indigo);color:var(--indigo-text);border-color:var(--indigo)}label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}input,select,textarea{padding:10px 12px;border-radius:6px;border:1px solid var(--cotton-line);font-size:14px;font-family:var(--font-sans);resize:vertical}.preview{width:100%;max-height:220px;object-fit:contain;border-radius:6px;background:var(--cotton)}button[type=submit]{margin-top:8px;background:var(--indigo);color:var(--indigo-text);border:none;border-radius:20px;padding:10px;font-size:14px}button[type=submit]:disabled{opacity:.6}.moderation-note{font-size:11px;color:var(--muted);line-height:1.45;text-align:center;margin:0}.message{font-size:13px;color:var(--madder);text-align:center;margin:0}.policy-popover{position:relative;padding:15px 38px 15px 16px;margin-bottom:4px;border:1px solid var(--blush-deep);border-radius:15px;background:linear-gradient(180deg,#fffafa 0%,#fff2f1 100%);box-shadow:0 10px 24px rgba(106,82,88,.1)}.policy-title{font:600 15px var(--font-voice);color:var(--ink);margin-bottom:7px}.policy-popover p{font:11px/1.55 var(--font-sans);color:var(--muted);margin:5px 0}.policy-popover strong{color:var(--ink)}.close-policy{position:absolute;right:10px;top:8px;width:24px;height:24px;border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer}.read-more{display:inline-block;margin-top:6px;color:var(--indigo);font:600 11px var(--font-sans)}
+        .page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--cotton); padding:24px 0; }
+        .form-card { background:#fff; border-radius:10px; padding:32px; width:100%; max-width:430px; display:flex; flex-direction:column; gap:12px; }
+        .wordmark { font-family:var(--font-voice); font-style:italic; font-size:20px; text-align:center; }
+        h1 { font-family:var(--font-voice); font-size:18px; font-weight:500; text-align:center; margin:0 0 4px; }
+        .policy-pop { position:relative; padding:16px 38px 15px 16px; border:1px solid var(--blush-deep); border-radius:15px; background:var(--blush-soft); box-shadow:var(--shadow-soft); }
+        .close-policy { position:absolute; right:10px; top:8px; border:0; background:transparent; color:var(--muted); font-size:20px; cursor:pointer; line-height:1; }
+        .policy-title { font:600 15px var(--font-voice); color:var(--ink); }
+        .policy-pop p, .policy-pop li { font:11px/1.5 var(--font-sans); color:var(--muted); }
+        .policy-pop p { margin:5px 0 5px; }
+        .policy-pop ul { margin:0 0 7px; padding-left:17px; }
+        .policy-link { font:600 11px var(--font-sans); color:var(--ink); }
+        .type-toggle { display:flex; gap:8px; margin-bottom:8px; }
+        .type-toggle button { flex:1; background:var(--cotton); color:var(--muted); border:1px solid var(--cotton-line); border-radius:20px; padding:8px; font-size:12px; }
+        .type-toggle button.active { background:var(--indigo); color:var(--indigo-text); border-color:var(--indigo); }
+        label { font-size:13px; color:var(--muted); display:flex; flex-direction:column; gap:6px; }
+        input,select,textarea { padding:10px 12px; border-radius:6px; border:1px solid var(--cotton-line); font-size:14px; font-family:var(--font-sans); resize:vertical; }
+        .preview { width:100%; max-height:220px; object-fit:contain; border-radius:6px; background:var(--cotton); }
+        .rights-check { flex-direction:row; align-items:flex-start; gap:9px; padding:10px 11px; border:1px solid var(--cotton-line); border-radius:10px; background:var(--cotton); cursor:pointer; }
+        .rights-check input { width:17px; height:17px; margin:0; flex:0 0 auto; accent-color:var(--indigo); }
+        .rights-check span { font:11px/1.45 var(--font-sans); color:var(--ink); }
+        button[type="submit"] { margin-top:2px; background:var(--indigo); color:var(--indigo-text); border:none; border-radius:20px; padding:10px; font-size:14px; }
+        button[type="submit"]:disabled { opacity:.45; cursor:not-allowed; }
+        .moderation-note { font-size:11px; color:var(--muted); line-height:1.45; text-align:center; margin:0; }
+        .message { font-size:13px; color:var(--madder); text-align:center; margin:0; }
       `}</style>
     </main>
   );
