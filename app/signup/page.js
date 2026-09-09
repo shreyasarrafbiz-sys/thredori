@@ -6,10 +6,11 @@ import { supabase } from "../../lib/supabaseClient";
 
 const AVATARS = ["flower", "smiley", "heart", "sun", "cloud", "star"];
 const avatarEmoji = { flower: "🌸", smiley: "😊", heart: "💗", sun: "🌞", cloud: "☁️", star: "⭐" };
+const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
 
 export default function SignUp() {
   const [fullName, setFullName] = useState("");
-  const [avatarSeed, setAvatarSeed] = useState("flower");
+  const [avatarSeed, setAvatarSeed] = useState(() => randomAvatar());
   const [avatarFile, setAvatarFile] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
