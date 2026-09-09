@@ -15,16 +15,29 @@ export default function Trending() {
 
   useEffect(() => {
     async function load() {
-      // Sorted by newest for now — swap this order/query once a real
-      // trending signal (votes, comments) exists to rank by.
-      const { data } = await supabase
-        .from("posts")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(30);
+      const [{ data: postData }, { data: voteData }] = await Promise.all([
+        supabase
+          .from("posts")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(100),
+        supabase
+          .from("votes")
+          .select("post_id, value"),
+      ]);
 
-      setPosts(
-        (data || []).map((p) => ({
+      const upvotesByPost = new Map();
+      (voteData || []).forEach((vote) => {
+        if (vote.value === 1) {
+          upvotesByPost.set(
+            vote.post_id,
+            (upvotesByPost.get(vote.post_id) || 0) + 1
+          );
+        }
+      });
+
+      const rankedPosts = (postData || [])
+        .map((p) => ({
           id: p.id,
           name: p.brand_name,
           category: p.category,
@@ -34,8 +47,15 @@ export default function Trending() {
           image: p.image_url,
           postType: p.post_type,
           isReal: true,
+          upvotes: upvotesByPost.get(p.id) || 0,
+          createdAt: p.created_at,
         }))
-      );
+        .sort((a, b) => {
+          if (b.upvotes !== a.upvotes) return b.upvotes - a.upvotes;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+
+      setPosts(rankedPosts);
       setLoading(false);
     }
     load();
@@ -51,7 +71,7 @@ export default function Trending() {
       </div>
 
       <p className="note container">
-        Showing recent posts for now — ranking by votes and comments is coming soon.
+        The finds getting the most love from the Thredori community.
       </p>
 
       {loading ? (
