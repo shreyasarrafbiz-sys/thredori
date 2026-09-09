@@ -1,0 +1,47 @@
+name: Apply message page name privacy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  privacy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Blur unconnected user names
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("app/messages/page.js")
+          s = p.read_text()
+          old = '''  const requestByPerson = useMemo(() => { const map = new Map(); requests.forEach((r) => map.set(r.sender_id === user?.id ? r.receiver_id : r.sender_id, r)); return map; }, [requests, user]);'''
+          new = '''  const requestByPerson = useMemo(() => { const map = new Map(); requests.forEach((r) => map.set(r.sender_id === user?.id ? r.receiver_id : r.sender_id, r)); return map; }, [requests, user]);
+  const isAcceptedConnection = (personId) => requests.some((r) => r.status === "accepted" && ((r.sender_id === user?.id && r.receiver_id === personId) || (r.sender_id === personId && r.receiver_id === user?.id)));'''
+          if old not in s:
+            raise SystemExit("requestByPerson block not found")
+          s = s.replace(old, new, 1)
+          old = '''<div className="person-name">{p.full_name}</div><div className="handle">{p.username ? `@${p.username}` : "Thredori member"}</div>'''
+          new = '''<div className={`person-name ${isAcceptedConnection(p.id) ? "" : "private-name"}`}>{p.full_name || "Thredori member"}</div><div className={`handle ${isAcceptedConnection(p.id) ? "" : "private-name"}`}>{p.username ? `@${p.username}` : "Thredori member"}</div>'''
+          if old not in s:
+            raise SystemExit("person name block not found")
+          s = s.replace(old, new, 1)
+          old = '''.page{min-height:100vh;padding:54px 28px 80px;background:var(--blush)}.shell{width:min(920px,100%);margin:auto}.header{margin-bottom:24px}'''
+          new = '''.page{min-height:100vh;padding:54px 28px 80px;background:var(--blush)}.shell{width:min(920px,100%);margin:auto}.header{margin-bottom:24px}.private-name{filter:blur(5px);user-select:none}'''
+          if old not in s:
+            raise SystemExit("style anchor not found")
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+      - name: Commit privacy fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/messages/page.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Blur names of unconnected users"
+          git push origin main
