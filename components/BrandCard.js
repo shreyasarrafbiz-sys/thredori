@@ -90,8 +90,8 @@ export default function BrandCard({ brand, user }) {
       )}
 
       <style jsx>{`
-        .brand-card { break-inside:avoid; background:rgba(255,253,252,.96); border:1px solid rgba(234,216,213,.9); border-radius:13px; margin-bottom:14px; padding:10px 10px 12px; box-shadow:var(--shadow-soft); animation:softRise 560ms ease-out both; transition:transform 240ms ease,box-shadow 240ms ease; }
-        .brand-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lift); }
+        .brand-card { break-inside:avoid; background:rgba(255,253,252,.96); border:1px solid rgba(234,216,213,.9); border-radius:13px; margin-bottom:14px; padding:10px 10px 12px; box-shadow:var(--shadow-soft); transition:transform 180ms ease,box-shadow 180ms ease; will-change:transform; }
+        .brand-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lift); }
         .brand-card-name,.thread-title { font-family:var(--font-voice); color:var(--ink); }
         .brand-card-name { font-size:14px; margin-top:4px; }
         .brand-card-note { font-size:11px; color:var(--muted); margin:2px 0 6px; }
@@ -111,8 +111,8 @@ export default function BrandCard({ brand, user }) {
       <style jsx global>{`
         .media-link,.thread-link { display:block; }
         .polaroid { background:#fff; padding:7px 7px 20px; border:1px solid var(--cotton-line); border-radius:9px; box-shadow:0 5px 15px rgba(35,32,25,.08); margin-bottom:8px; overflow:hidden; }
-        .brand-photo { display:block; width:100%; height:auto; transition:transform 450ms ease; }
-        .brand-card:hover .brand-photo { transform:scale(1.015); }
+        .brand-photo { display:block; width:100%; height:auto; transition:transform 250ms ease; }
+        .brand-card:hover .brand-photo { transform:scale(1.01); }
         .media-placeholder { width:100%; border-radius:8px; margin-bottom:8px; }
       `}</style>
     </div>
