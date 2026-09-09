@@ -131,9 +131,9 @@ export default function Home() {
         .intro p { font-size:13px; color:var(--muted); margin:0; }
         .loading { padding:20px; font-size:13px; color:var(--muted); text-align:center; }
         .sentinel { height:1px; }
-        .grid { column-count:1; column-gap:14px; padding:10px 20px 40px; position:relative; z-index:2; }
-        @media (min-width:640px) { .grid { column-count:2; } }
-        @media (min-width:960px) { .grid { column-count:3; } }
+        .grid { display:grid; grid-template-columns:1fr; gap:14px; padding:10px 20px 40px; position:relative; z-index:2; align-items:start; }
+        @media (min-width:640px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (min-width:960px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
         footer { padding:20px; text-align:center; font-size:12px; color:var(--muted); border-top:1px solid var(--cotton-line); position:relative; z-index:2; }
         @media (max-width:640px) { .decor-flower,.decor-smile { left:3%; } .decor-heart,.decor-sparkle { right:3%; } }
       `}</style>
