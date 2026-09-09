@@ -15,20 +15,23 @@ export default function Trending() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: postData }, { data: voteData }] = await Promise.all([
+      const [{ data: postData, error: postError }, { data: voteData, error: voteError }] = await Promise.all([
         supabase
           .from("posts")
           .select("*")
-          .order("created_at", { ascending: false })
-          .limit(100),
+          .order("created_at", { ascending: false }),
         supabase
           .from("votes")
           .select("post_id, value"),
       ]);
 
+      if (postError || voteError) {
+        console.error("Trending load error", { postError, voteError });
+      }
+
       const upvotesByPost = new Map();
       (voteData || []).forEach((vote) => {
-        if (vote.value === 1) {
+        if (Number(vote.value) === 1) {
           upvotesByPost.set(
             vote.post_id,
             (upvotesByPost.get(vote.post_id) || 0) + 1
@@ -51,8 +54,9 @@ export default function Trending() {
           createdAt: p.created_at,
         }))
         .sort((a, b) => {
-          if (b.upvotes !== a.upvotes) return b.upvotes - a.upvotes;
-          return new Date(b.createdAt) - new Date(a.createdAt);
+          const upvoteDifference = b.upvotes - a.upvotes;
+          if (upvoteDifference !== 0) return upvoteDifference;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
 
       setPosts(rankedPosts);
