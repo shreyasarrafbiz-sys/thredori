@@ -4,10 +4,35 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
+async function imageToModerationDataUrl(file) {
+  if (!file) return "";
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const maxDimension = 1280;
+        const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      image.onerror = () => resolve("");
+      image.src = reader.result;
+    };
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function NewPost() {
   const [user, setUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [postType, setPostType] = useState("post"); // "post" (brand find) or "thread" (discussion)
+  const [postType, setPostType] = useState("post");
   const [brandName, setBrandName] = useState("");
   const [note, setNote] = useState("");
   const [body, setBody] = useState("");
@@ -39,6 +64,32 @@ export default function NewPost() {
     if (!user) return;
     setLoading(true);
     setMessage("");
+
+    const moderationImage = await imageToModerationDataUrl(imageFile);
+    if (imageFile && !moderationImage) {
+      setMessage("We could not read this image. Please choose another image.");
+      setLoading(false);
+      return;
+    }
+
+    const moderationResponse = await fetch("/api/moderate-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brandName: postType === "post" ? brandName : "",
+        note: postType === "post" ? note : "",
+        title: postType === "thread" ? brandName : "",
+        body: postType === "thread" ? body : "",
+        imageDataUrl: moderationImage,
+      }),
+    });
+
+    const moderation = await moderationResponse.json().catch(() => ({}));
+    if (!moderationResponse.ok || moderation.allowed !== true) {
+      setMessage(moderation.reason || "This post could not be approved.");
+      setLoading(false);
+      return;
+    }
 
     let imageUrl = "";
 
@@ -87,33 +138,12 @@ export default function NewPost() {
       <main className="auth-page">
         <div className="auth-card">
           <p>You need to be logged in to post.</p>
-          <a className="link-button" href="/login">
-            Log in
-          </a>
+          <a className="link-button" href="/login">Log in</a>
         </div>
         <style jsx>{`
-          .auth-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--cotton);
-          }
-          .auth-card {
-            background: #fff;
-            border-radius: 10px;
-            padding: 32px;
-            text-align: center;
-          }
-          .link-button {
-            display: inline-block;
-            margin-top: 12px;
-            background: var(--indigo);
-            color: var(--indigo-text);
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 14px;
-          }
+          .auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--cotton); }
+          .auth-card { background:#fff; border-radius:10px; padding:32px; text-align:center; }
+          .link-button { display:inline-block; margin-top:12px; background:var(--indigo); color:var(--indigo-text); padding:10px 20px; border-radius:20px; font-size:14px; }
         `}</style>
       </main>
     );
@@ -126,202 +156,48 @@ export default function NewPost() {
         <h1>New post</h1>
 
         <div className="type-toggle">
-          <button
-            type="button"
-            className={postType === "post" ? "active" : ""}
-            onClick={() => setPostType("post")}
-          >
-            Brand find
-          </button>
-          <button
-            type="button"
-            className={postType === "thread" ? "active" : ""}
-            onClick={() => setPostType("thread")}
-          >
-            Start a discussion
-          </button>
+          <button type="button" className={postType === "post" ? "active" : ""} onClick={() => setPostType("post")}>Brand find</button>
+          <button type="button" className={postType === "thread" ? "active" : ""} onClick={() => setPostType("thread")}>Start a discussion</button>
         </div>
 
         {postType === "post" ? (
           <>
-            <label>
-              Image
-              <input type="file" accept="image/*" onChange={handleFileChange} />
-            </label>
-
-            {preview && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="Preview" className="preview" />
-            )}
-
-            <label>
-              Brand name
-              <input
-                type="text"
-                required
-                value={brandName}
-                onChange={(e) => setBrandName(e.target.value)}
-              />
-            </label>
-
-            <label>
-              Note (one line, e.g. material or style)
-              <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
-            </label>
-
-            <label>
-              Brand link
-              <input
-                type="url"
-                placeholder="https://"
-                value={brandLink}
-                onChange={(e) => setBrandLink(e.target.value)}
-              />
-            </label>
-
-            <label>
-              Category
-              <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="Fashion">Fashion</option>
-                <option value="Home">Home</option>
-              </select>
-            </label>
+            <label>Image<input type="file" accept="image/*" onChange={handleFileChange} /></label>
+            {preview && <img src={preview} alt="Preview" className="preview" />}
+            <label>Brand name<input type="text" required value={brandName} onChange={(e) => setBrandName(e.target.value)} /></label>
+            <label>Note (one line, e.g. material or style)<input type="text" value={note} onChange={(e) => setNote(e.target.value)} /></label>
+            <label>Brand link<input type="url" placeholder="https://" value={brandLink} onChange={(e) => setBrandLink(e.target.value)} /></label>
+            <label>Category<select value={category} onChange={(e) => setCategory(e.target.value)}><option value="Fashion">Fashion</option><option value="Home">Home</option></select></label>
           </>
         ) : (
           <>
-            <label>
-              Title
-              <input
-                type="text"
-                required
-                placeholder="What do you want to ask or discuss?"
-                value={brandName}
-                onChange={(e) => setBrandName(e.target.value)}
-              />
-            </label>
-
-            <label>
-              Details
-              <textarea
-                rows={6}
-                placeholder="Add context, ask a question, start a conversation..."
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-              />
-            </label>
-
-            <label>
-              Image (optional)
-              <input type="file" accept="image/*" onChange={handleFileChange} />
-            </label>
-
-            {preview && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="Preview" className="preview" />
-            )}
+            <label>Title<input type="text" required placeholder="What do you want to ask or discuss?" value={brandName} onChange={(e) => setBrandName(e.target.value)} /></label>
+            <label>Details<textarea rows={6} placeholder="Add context, ask a question, start a conversation..." value={body} onChange={(e) => setBody(e.target.value)} /></label>
+            <label>Image (optional)<input type="file" accept="image/*" onChange={handleFileChange} /></label>
+            {preview && <img src={preview} alt="Preview" className="preview" />}
           </>
         )}
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Posting..." : "Post"}
-        </button>
-
+        <button type="submit" disabled={loading}>{loading ? "Checking..." : "Post"}</button>
+        <p className="moderation-note">Every post is checked for unsafe, sexual, harmful, hateful, violent, self-harm, and illegal content before it can be published.</p>
         {message && <p className="message">{message}</p>}
       </form>
 
       <style jsx>{`
-        .page {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--cotton);
-          padding: 24px 0;
-        }
-        .form-card {
-          background: #fff;
-          border-radius: 10px;
-          padding: 32px;
-          width: 100%;
-          max-width: 400px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .wordmark {
-          font-family: var(--font-voice);
-          font-style: italic;
-          font-size: 20px;
-          text-align: center;
-        }
-        h1 {
-          font-family: var(--font-voice);
-          font-size: 18px;
-          font-weight: 500;
-          text-align: center;
-          margin: 0 0 4px;
-        }
-        .type-toggle {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 8px;
-        }
-        .type-toggle button {
-          flex: 1;
-          background: var(--cotton);
-          color: var(--muted);
-          border: 1px solid var(--cotton-line);
-          border-radius: 20px;
-          padding: 8px;
-          font-size: 12px;
-        }
-        .type-toggle button.active {
-          background: var(--indigo);
-          color: var(--indigo-text);
-          border-color: var(--indigo);
-        }
-        label {
-          font-size: 13px;
-          color: var(--muted);
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        input,
-        select,
-        textarea {
-          padding: 10px 12px;
-          border-radius: 6px;
-          border: 1px solid var(--cotton-line);
-          font-size: 14px;
-          font-family: var(--font-sans);
-          resize: vertical;
-        }
-        .preview {
-          width: 100%;
-          max-height: 220px;
-          object-fit: contain;
-          border-radius: 6px;
-          background: var(--cotton);
-        }
-        button[type="submit"] {
-          margin-top: 8px;
-          background: var(--indigo);
-          color: var(--indigo-text);
-          border: none;
-          border-radius: 20px;
-          padding: 10px;
-          font-size: 14px;
-        }
-        button[type="submit"]:disabled {
-          opacity: 0.6;
-        }
-        .message {
-          font-size: 13px;
-          color: var(--madder);
-          text-align: center;
-          margin: 0;
-        }
+        .page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--cotton); padding:24px 0; }
+        .form-card { background:#fff; border-radius:10px; padding:32px; width:100%; max-width:400px; display:flex; flex-direction:column; gap:12px; }
+        .wordmark { font-family:var(--font-voice); font-style:italic; font-size:20px; text-align:center; }
+        h1 { font-family:var(--font-voice); font-size:18px; font-weight:500; text-align:center; margin:0 0 4px; }
+        .type-toggle { display:flex; gap:8px; margin-bottom:8px; }
+        .type-toggle button { flex:1; background:var(--cotton); color:var(--muted); border:1px solid var(--cotton-line); border-radius:20px; padding:8px; font-size:12px; }
+        .type-toggle button.active { background:var(--indigo); color:var(--indigo-text); border-color:var(--indigo); }
+        label { font-size:13px; color:var(--muted); display:flex; flex-direction:column; gap:6px; }
+        input,select,textarea { padding:10px 12px; border-radius:6px; border:1px solid var(--cotton-line); font-size:14px; font-family:var(--font-sans); resize:vertical; }
+        .preview { width:100%; max-height:220px; object-fit:contain; border-radius:6px; background:var(--cotton); }
+        button[type="submit"] { margin-top:8px; background:var(--indigo); color:var(--indigo-text); border:none; border-radius:20px; padding:10px; font-size:14px; }
+        button[type="submit"]:disabled { opacity:.6; }
+        .moderation-note { font-size:11px; color:var(--muted); line-height:1.45; text-align:center; margin:0; }
+        .message { font-size:13px; color:var(--madder); text-align:center; margin:0; }
       `}</style>
     </main>
   );
