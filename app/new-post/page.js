@@ -12,14 +12,14 @@ async function imageToModerationDataUrl(file) {
     reader.onload = () => {
       const image = new Image();
       image.onload = () => {
-        const maxDimension = 1280;
+        const maxDimension = 768;
         const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
         const canvas = document.createElement("canvas");
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext("2d");
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.8));
+        resolve(canvas.toDataURL("image/jpeg", 0.65));
       };
       image.onerror = () => resolve("");
       image.src = reader.result;
@@ -80,18 +80,27 @@ export default function NewPost() {
     }
 
     for (const imageDataUrl of moderationImages) {
-      const moderationResponse = await fetch("/api/moderate-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brandName: postType === "post" ? brandName : "",
-          note: postType === "post" ? note : "",
-          title: postType === "thread" ? brandName : "",
-          body: postType === "thread" ? body : "",
-          imageDataUrl,
-        }),
-      });
-      const moderation = await moderationResponse.json().catch(() => ({}));
+      let moderationResponse;
+      let moderation = {};
+      try {
+        moderationResponse = await fetch("/api/moderate-content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            brandName: postType === "post" ? brandName : "",
+            note: postType === "post" ? note : "",
+            title: postType === "thread" ? brandName : "",
+            body: postType === "thread" ? body : "",
+            imageDataUrl,
+          }),
+        });
+        moderation = await moderationResponse.json().catch(() => ({}));
+      } catch (error) {
+        console.error("Moderation request failed", error);
+        setMessage("Content verification could not be reached. Please try again.");
+        setLoading(false);
+        return;
+      }
       if (!moderationResponse.ok || moderation.allowed !== true) {
         setMessage(moderation.reason || "This post could not be approved.");
         setLoading(false);
