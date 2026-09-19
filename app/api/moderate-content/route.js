@@ -54,9 +54,20 @@ export async function POST(request) {
     });
 
     if (!moderationResponse.ok) {
-      console.error("OpenAI moderation error", await moderationResponse.text());
+      const raw = await moderationResponse.text();
+      console.error("OpenAI moderation error", {
+        status: moderationResponse.status,
+        response: raw,
+      });
+      let apiMessage = "";
+      try { apiMessage = JSON.parse(raw)?.error?.message || ""; } catch {}
+      let reason = "We could not verify this post. Please try again.";
+      if (moderationResponse.status === 401) reason = "Content verification is not authorized. Check OPENAI_API_KEY in Vercel.";
+      else if (moderationResponse.status === 429) reason = "Content verification is temporarily rate-limited. Please try again in a moment.";
+      else if (moderationResponse.status === 400) reason = apiMessage ? `The verification request was rejected: ${apiMessage}` : "The image could not be submitted for verification.";
+      else if (moderationResponse.status >= 500) reason = "The content verification service is temporarily unavailable. Please try again.";
       return NextResponse.json(
-        { allowed: false, reason: "We could not verify this post. Please try again." },
+        { allowed: false, reason },
         { status: 502 }
       );
     }
