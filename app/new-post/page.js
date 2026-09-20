@@ -102,8 +102,7 @@ export default function NewPost() {
         return;
       }
       if (!moderationResponse.ok || moderation.allowed !== true) {
-        const diagnostic = moderation.errorCode ? ` (Code: ${moderation.errorCode})` : "";
-        setMessage(`${moderation.reason || "This post could not be approved."}${diagnostic}`);
+        setMessage(moderation.reason || "This post could not be approved.");
         setLoading(false);
         return;
       }
