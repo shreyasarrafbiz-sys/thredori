@@ -150,7 +150,8 @@ export async function POST(request) {
           reason: getFriendlyError(moderationResponse.status, openAIError),
           errorCode: openAIError.code || openAIError.type || `http_${moderationResponse.status}`,
           errorMessage: openAIError.message || null,
-          retryAfter: moderationResponse.headers.get("retry-after"),\n          requestId: moderationResponse.headers.get("x-request-id"),
+          retryAfter: moderationResponse.headers.get("retry-after"),
+          requestId: moderationResponse.headers.get("x-request-id"),
         },
         { status: moderationResponse.status === 429 ? 429 : 502 }
       );
