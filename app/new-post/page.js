@@ -19,7 +19,7 @@ async function imageToModerationDataUrl(file) {
         canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext("2d");
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.65));
+        resolve(canvas.toDataURL("image/jpeg", 0.6));
       };
       image.onerror = () => resolve("");
       image.src = reader.result;
