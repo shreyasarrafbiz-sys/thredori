@@ -12,14 +12,14 @@ async function imageToModerationDataUrl(file) {
     reader.onload = () => {
       const image = new Image();
       image.onload = () => {
-        const maxDimension = 768;
+        const maxDimension = 512;
         const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
         const canvas = document.createElement("canvas");
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext("2d");
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.6));
+        resolve(canvas.toDataURL("image/jpeg", 0.5));
       };
       image.onerror = () => resolve("");
       image.src = reader.result;
