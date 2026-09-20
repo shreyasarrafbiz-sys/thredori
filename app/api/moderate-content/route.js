@@ -61,7 +61,8 @@ function getFriendlyError(status, error) {
   }
 
   if (status === 429) {
-    return "Content verification is temporarily rate-limited. The server retried once. Please wait a moment and try again.";
+    const detail = error.code || error.type || "rate_limit_exceeded";
+    return `Content verification is temporarily rate-limited. Code: ${detail}. Please try again in a moment.`;
   }
 
   if (status === 400) {
