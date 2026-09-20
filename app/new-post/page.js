@@ -102,7 +102,9 @@ export default function NewPost() {
         return;
       }
       if (!moderationResponse.ok || moderation.allowed !== true) {
-        setMessage(moderation.reason || "This post could not be approved.");
+        const code = moderation.errorCode ? ` Code: ${moderation.errorCode}.` : "";
+        const detail = moderation.errorMessage ? ` Details: ${moderation.errorMessage}` : "";
+        setMessage(`${moderation.reason || "This post could not be approved."}${code}${detail}`);
         setLoading(false);
         return;
       }
