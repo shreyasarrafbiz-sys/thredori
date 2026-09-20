@@ -16,7 +16,7 @@ const BLOCKED_CATEGORIES = [
   "illicit/violent",
 ];
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 1;
 const BASE_RETRY_DELAY_MS = 1500;
 
 function getRetryDelay(response, attempt) {
@@ -61,7 +61,7 @@ function getFriendlyError(status, error) {
   }
 
   if (status === 429) {
-    return "Content verification is temporarily rate-limited. We retried automatically. Please wait a moment and try again.";
+    return "Content verification is temporarily rate-limited. The server retried once. Please wait a moment and try again.";
   }
 
   if (status === 400) {
@@ -148,7 +148,9 @@ export async function POST(request) {
         {
           allowed: false,
           reason: getFriendlyError(moderationResponse.status, openAIError),
-          errorCode: openAIError.code || null,
+          errorCode: openAIError.code || openAIError.type || `http_${moderationResponse.status}`,
+          errorMessage: openAIError.message || null,
+          retryAfter: moderationResponse.headers.get("retry-after"),
         },
         { status: moderationResponse.status === 429 ? 429 : 502 }
       );
