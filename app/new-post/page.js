@@ -104,7 +104,8 @@ export default function NewPost() {
       if (!moderationResponse.ok || moderation.allowed !== true) {
         const code = moderation.errorCode ? ` Code: ${moderation.errorCode}.` : "";
         const detail = moderation.errorMessage ? ` Details: ${moderation.errorMessage}` : "";
-        const reviewNote = moderation.reviewRequired ? " This image has not been published and requires manual review." : "";\n        setMessage(`${moderation.reason || "This post could not be approved."}${reviewNote}${code}${detail}`);
+        const reviewNote = moderation.reviewRequired ? " This image has not been published and requires moderator review before it can be used." : "";
+        setMessage(`${moderation.reason || "This post could not be approved."}${reviewNote}${code}${detail}`);
         setLoading(false);
         return;
       }
