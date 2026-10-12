@@ -12,14 +12,14 @@ async function imageToModerationDataUrl(file) {
     reader.onload = () => {
       const image = new Image();
       image.onload = () => {
-        const maxDimension = 512;
+        const maxDimension = 1280;
         const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
         const canvas = document.createElement("canvas");
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext("2d");
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.5));
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
       };
       image.onerror = () => resolve("");
       image.src = reader.result;
@@ -68,7 +68,7 @@ export default function NewPost() {
     setLoading(true);
     setMessage("");
 
-    const moderationImages = [];
+    const images = [];
     for (const file of imageFiles) {
       const dataUrl = await imageToModerationDataUrl(file);
       if (!dataUrl) {
@@ -76,70 +76,49 @@ export default function NewPost() {
         setLoading(false);
         return;
       }
-      moderationImages.push(dataUrl);
+      images.push(dataUrl);
     }
 
-    for (const imageDataUrl of moderationImages) {
-      let moderationResponse;
-      let moderation = {};
-      try {
-        moderationResponse = await fetch("/api/moderate-content", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            brandName: postType === "post" ? brandName : "",
-            note: postType === "post" ? note : "",
-            title: postType === "thread" ? brandName : "",
-            body: postType === "thread" ? body : "",
-            imageDataUrl,
-          }),
-        });
-        moderation = await moderationResponse.json().catch(() => ({}));
-      } catch (error) {
-        console.error("Moderation request failed", error);
-        setMessage("Content verification could not be reached. Please try again.");
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (sessionError || !accessToken) {
+        setMessage("Your session has expired. Please sign in again.");
         setLoading(false);
         return;
       }
-      if (!moderationResponse.ok || moderation.allowed !== true) {
-        const code = moderation.errorCode ? ` Code: ${moderation.errorCode}.` : "";
-        const detail = moderation.errorMessage ? ` Details: ${moderation.errorMessage}` : "";
-        const reviewNote = moderation.reviewRequired ? " This image has not been published and requires moderator review before it can be used." : "";
-        setMessage(`${moderation.reason || "This post could not be approved."}${reviewNote}${code}${detail}`);
+
+      const response = await fetch("/api/posts/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          images,
+          postType,
+          brandName,
+          note,
+          body,
+          brandLink,
+          category,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok !== true) {
+        const reviewNote = result.reviewRequired
+          ? " This image was held and was not published. No moderator review screen is configured yet."
+          : "";
+        setMessage(`${result.error || "We could not publish this post."}${reviewNote}`);
         setLoading(false);
         return;
       }
+      router.push("/");
+    } catch {
+      setMessage("We could not publish this post. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    const mediaUrls = [];
-    for (const imageFile of imageFiles) {
-      const fileExt = imageFile.name.split(".").pop();
-      const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from("post-images").upload(filePath, imageFile);
-      if (uploadError) {
-        setMessage(uploadError.message);
-        setLoading(false);
-        return;
-      }
-      const { data: publicUrlData } = supabase.storage.from("post-images").getPublicUrl(filePath);
-      mediaUrls.push(publicUrlData.publicUrl);
-    }
-
-    const { error: insertError } = await supabase.from("posts").insert({
-      user_id: user.id,
-      brand_name: brandName,
-      note: postType === "post" ? note : null,
-      body: postType === "thread" ? body : null,
-      brand_link: postType === "post" ? brandLink : null,
-      category: postType === "post" ? category : "Discussion",
-      image_url: mediaUrls[0] || "",
-      media_urls: mediaUrls,
-      post_type: postType,
-    });
-
-    setLoading(false);
-    if (insertError) setMessage(insertError.message);
-    else router.push("/");
   }
 
   if (checkingAuth) return null;
