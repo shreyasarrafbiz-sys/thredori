@@ -44,7 +44,7 @@ function getVisionClient() {
 
 async function detectSafeSearch(buffer) {
   const client = getVisionClient();
-  const [result] = await client.safeSearchDetection({ image: { content: buffer } });
+  const [result] = await client.safeSearchDetection({ content: buffer });
   if (result?.error?.message || !result?.safeSearchAnnotation) {
     throw new Error("SafeSearch did not return an annotation");
   }
