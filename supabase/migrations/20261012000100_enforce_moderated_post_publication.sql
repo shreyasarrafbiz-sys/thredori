@@ -22,7 +22,7 @@ create policy "Require server moderation for post inserts"
 on public.posts
 as restrictive
 for insert
-to authenticated
+to anon, authenticated
 with check (false);
 
 -- Block direct client edits to image/post content, which could otherwise replace
@@ -32,7 +32,7 @@ create policy "Require server moderation for post updates"
 on public.posts
 as restrictive
 for update
-to authenticated
+to anon, authenticated
 using (false)
 with check (false);
 
@@ -43,7 +43,7 @@ create policy "Require server moderation for post image uploads"
 on storage.objects
 as restrictive
 for insert
-to authenticated
+to anon, authenticated
 with check (bucket_id <> 'post-images');
 
 drop policy if exists "Require server moderation for post image updates" on storage.objects;
@@ -51,6 +51,6 @@ create policy "Require server moderation for post image updates"
 on storage.objects
 as restrictive
 for update
-to authenticated
+to anon, authenticated
 using (bucket_id <> 'post-images')
 with check (bucket_id <> 'post-images');
