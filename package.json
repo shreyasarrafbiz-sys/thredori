@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --experimental-default-type=module --test"
   },
   "dependencies": {
+    "@google-cloud/vision": "^5.3.5",
     "@supabase/supabase-js": "^2.112.3",
     "next": "14.2.35",
     "react": "^18.3.1",
