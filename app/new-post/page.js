@@ -43,7 +43,6 @@ export default function NewPost() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [showPolicies, setShowPolicies] = useState(true);
-  const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -64,7 +63,7 @@ export default function NewPost() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!user || !rightsConfirmed || imageFiles.length === 0) return;
+    if (!user || imageFiles.length === 0) return;
     setLoading(true);
     setMessage("");
 
@@ -129,7 +128,7 @@ export default function NewPost() {
     );
   }
 
-  const submitDisabled = loading || !rightsConfirmed || imageFiles.length === 0;
+  const submitDisabled = loading || imageFiles.length === 0;
 
   return (
     <main className="page">
@@ -175,11 +174,6 @@ export default function NewPost() {
           </>
         )}
 
-        <label className="rights-check">
-          <input type="checkbox" checked={rightsConfirmed} onChange={(e) => setRightsConfirmed(e.target.checked)} />
-          <span>I confirm that this is my own content or that I have permission/right to share it.</span>
-        </label>
-
         <button type="submit" disabled={submitDisabled}>{loading ? "Checking..." : "Post"}</button>
         {!imageFiles.length && <p className="required-note">An image or video is required to create a post.</p>}
         <p className="moderation-note">Every item is checked for unsafe, sexual, harmful, hateful, violent, self-harm, and illegal content before publication.</p>
@@ -200,7 +194,6 @@ export default function NewPost() {
         label { font-size:13px; color:var(--muted); display:flex; flex-direction:column; gap:6px; } label small { font-size:10px; color:var(--muted); }
         input,select,textarea { padding:10px 12px; border-radius:6px; border:1px solid var(--cotton-line); font-size:14px; font-family:var(--font-sans); resize:vertical; }
         .preview-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }.preview { width:100%; aspect-ratio:1; object-fit:cover; border-radius:7px; background:var(--cotton); }
-        .rights-check { flex-direction:row; align-items:flex-start; gap:9px; padding:10px 11px; border:1px solid var(--cotton-line); border-radius:10px; background:var(--cotton); cursor:pointer; }.rights-check input { width:17px; height:17px; margin:0; flex:0 0 auto; accent-color:var(--indigo); }.rights-check span { font:11px/1.45 var(--font-sans); color:var(--ink); }
         button[type="submit"] { margin-top:2px; background:var(--indigo); color:var(--indigo-text); border:none; border-radius:20px; padding:10px; font-size:14px; } button[type="submit"]:disabled { opacity:.45; cursor:not-allowed; }
         .moderation-note,.required-note { font-size:11px; line-height:1.45; text-align:center; margin:0; }.moderation-note { color:var(--muted); }.required-note { color:var(--madder); }.message { font-size:13px; color:var(--madder); text-align:center; margin:0; }
         .auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--cotton); }.auth-card { background:#fff; border-radius:10px; padding:32px; text-align:center; }.link-button { display:inline-block; margin-top:12px; background:var(--indigo); color:var(--indigo-text); padding:10px 20px; border-radius:20px; font-size:14px; }
