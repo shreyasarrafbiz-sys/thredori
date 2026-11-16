@@ -4,57 +4,31 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const icons = {
-  home: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 11l9-8 9 8" strokeLinecap="round" strokeLinejoin="round" /><path d="M5 10v10h14V10" strokeLinecap="round" strokeLinejoin="round" /></svg>),
-  trending: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 17l6-6 4 4 8-8" strokeLinecap="round" strokeLinejoin="round" /><path d="M15 7h6v6" strokeLinecap="round" strokeLinejoin="round" /></svg>),
-  create: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>),
-  messages: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4h16v12H8l-4 4V4z" strokeLinecap="round" strokeLinejoin="round" /></svg>),
-  profile: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="3.5" /><path d="M4.5 20c1.5-4 5-6 7.5-6s6 2 7.5 6" strokeLinecap="round" /></svg>),
-  policies: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 3h10l3 3v15H4V3h3z" strokeLinejoin="round"/><path d="M8 10h8M8 14h8M8 18h5" strokeLinecap="round"/></svg>),
+  home: <svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>,
+  trending: <svg viewBox="0 0 24 24"><path d="M3 17 9 11l4 4 8-9M15 6h6v6"/></svg>,
+  create: <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>,
+  messages: <svg viewBox="0 0 24 24"><path d="M4 4h16v12H8l-4 4z"/></svg>,
+  profile: <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.5-4 5-6 7.5-6s6 2 7.5 6"/></svg>,
+  policies: <svg viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 10h8M8 14h8M8 18h5"/></svg>,
 };
-
 const items = [
-  { key: "home", label: "Home", href: "/" },
-  { key: "trending", label: "Trending", href: "/trending" },
-  { key: "create", label: "Create", href: "/new-post" },
-  { key: "messages", label: "Messages", href: "/messages" },
-  { key: "profile", label: "Profile", href: "/profile" },
-  { key: "policies", label: "Policies", href: "/policies", desktopOnly: true },
+  {key:"home",label:"Home",href:"/"},{key:"trending",label:"Trending",href:"/trending"},
+  {key:"create",label:"Create",href:"/new-post"},{key:"messages",label:"Messages",href:"/messages"},
+  {key:"profile",label:"Profile",href:"/profile"},{key:"policies",label:"Guidelines",href:"/policies",desktopOnly:true},
 ];
 
-export default function Sidebar() {
-  const pathname = usePathname();
-
-  return (
-    <nav className="sidebar" aria-label="Main navigation">
-      <div className="sidebar-bloom" aria-hidden="true">✿</div>
-      {items.map((item) => {
-        const active = pathname === item.href;
-        return (
-          <Link key={item.key} href={item.href} className={`sidebar-item ${active ? "active" : ""} ${item.desktopOnly ? "desktop-only" : ""}`} aria-label={item.label} title={item.label}>
-            <span className="icon">{icons[item.key]}</span>
-            <span className="label">{item.label}</span>
-          </Link>
-        );
-      })}
-
-      <style jsx>{`
-        .sidebar { position:fixed; top:0; left:0; bottom:0; width:76px; background:rgba(255,250,249,.88); backdrop-filter:blur(12px); border-right:1px solid var(--cotton-line); display:flex; flex-direction:column; align-items:center; padding-top:14px; gap:6px; z-index:20; box-shadow:4px 0 22px rgba(106,82,88,.05); }
-        .sidebar-bloom { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; margin-bottom:5px; color:var(--madder); background:var(--blush-soft); box-shadow:var(--shadow-soft); animation:floatSoft 5s ease-in-out infinite; font-size:19px; }
-        .sidebar-item { display:flex; flex-direction:column; align-items:center; gap:4px; padding:9px 6px; border-radius:14px; color:var(--muted); width:62px; transition:transform 200ms ease,color 200ms ease,background 200ms ease,box-shadow 200ms ease; }
-        .sidebar-item:hover { transform:translateY(-3px); color:var(--ink); background:var(--blush-soft); box-shadow:0 8px 18px rgba(106,82,88,.09); }
-        .sidebar-item.active { color:var(--indigo); background:var(--blush); box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 6px 15px rgba(106,82,88,.08); }
-        .icon { display:flex; }
-        .label { font-size:10px; }
-        @media (max-width:640px) {
-          .sidebar { top:auto; bottom:0; left:0; width:100%; height:calc(64px + env(safe-area-inset-bottom)); padding:5px 8px env(safe-area-inset-bottom); flex-direction:row; justify-content:space-around; align-items:stretch; gap:2px; background:rgba(255,253,252,.94); border-right:0; border-top:1px solid var(--cotton-line); box-shadow:0 -8px 24px rgba(106,82,88,.08); }
-          .sidebar-bloom,.desktop-only { display:none; }
-          .sidebar-item { width:20%; max-width:82px; padding:5px 3px; gap:2px; border-radius:12px; justify-content:center; }
-          .sidebar-item:hover { transform:none; }
-          .sidebar-item.active { box-shadow:none; }
-          .icon svg { width:21px; height:21px; }
-          .label { font-size:9px; }
-        }
-      `}</style>
-    </nav>
-  );
+export default function Sidebar(){
+  const pathname=usePathname();
+  return <nav className="sidebar" aria-label="Main navigation">
+    <Link href="/" className="sidebar-mark" aria-label="Thredori home">t.</Link>
+    <div className="sidebar-items">{items.map(item=>{
+      const active=item.href==="/" ? pathname==="/" : pathname===item.href || pathname.startsWith(item.href+"/");
+      return <Link key={item.key} href={item.href} className={`sidebar-item ${active?"active":""} ${item.desktopOnly?"desktop-only":""}`} aria-label={item.label} title={item.label}><span className="icon">{icons[item.key]}</span><span className="label">{item.label}</span></Link>;
+    })}</div>
+    <style jsx>{`
+      .sidebar{position:fixed;inset:0 auto 0 0;width:76px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:16px 7px;z-index:40}.sidebar-mark{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line-strong);border-radius:50%;font:italic 23px var(--font-editorial);color:var(--accent);margin-bottom:28px}.sidebar-items{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}.sidebar-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:60px;min-height:58px;border-radius:4px;color:var(--muted);transition:background .18s,color .18s}.sidebar-item:hover,.sidebar-item.active{background:var(--sand-soft);color:var(--ink)}.sidebar-item.active{box-shadow:inset 2px 0 var(--accent)}.icon{display:flex}.icon :global(svg){width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}.label{font-size:9px;font-weight:600}.desktop-only{margin-top:10px}
+      @media(max-width:640px){.sidebar{inset:auto 0 0;width:100%;height:calc(62px + env(safe-area-inset-bottom));padding:4px 8px env(safe-area-inset-bottom);border-right:0;border-top:1px solid var(--line);flex-direction:row;justify-content:center}.sidebar-mark,.desktop-only{display:none}.sidebar-items{flex-direction:row;justify-content:space-around;gap:0}.sidebar-item{width:20%;max-width:86px;min-height:50px;gap:3px}.sidebar-item.active{box-shadow:inset 0 2px var(--accent)}.icon :global(svg){width:20px;height:20px}}
+    `}
+    </style>
+  </nav>;
 }
