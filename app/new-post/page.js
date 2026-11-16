@@ -12,14 +12,14 @@ async function imageToModerationDataUrl(file) {
     reader.onload = () => {
       const image = new Image();
       image.onload = () => {
-        const maxDimension = 512;
+        const maxDimension = 1280;
         const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
         const canvas = document.createElement("canvas");
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext("2d");
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.5));
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
       };
       image.onerror = () => resolve("");
       image.src = reader.result;
@@ -43,7 +43,6 @@ export default function NewPost() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [showPolicies, setShowPolicies] = useState(true);
-  const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -64,11 +63,11 @@ export default function NewPost() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!user || !rightsConfirmed || imageFiles.length === 0) return;
+    if (!user || imageFiles.length === 0) return;
     setLoading(true);
     setMessage("");
 
-    const moderationImages = [];
+    const images = [];
     for (const file of imageFiles) {
       const dataUrl = await imageToModerationDataUrl(file);
       if (!dataUrl) {
@@ -76,69 +75,49 @@ export default function NewPost() {
         setLoading(false);
         return;
       }
-      moderationImages.push(dataUrl);
+      images.push(dataUrl);
     }
 
-    for (const imageDataUrl of moderationImages) {
-      let moderationResponse;
-      let moderation = {};
-      try {
-        moderationResponse = await fetch("/api/moderate-content", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            brandName: postType === "post" ? brandName : "",
-            note: postType === "post" ? note : "",
-            title: postType === "thread" ? brandName : "",
-            body: postType === "thread" ? body : "",
-            imageDataUrl,
-          }),
-        });
-        moderation = await moderationResponse.json().catch(() => ({}));
-      } catch (error) {
-        console.error("Moderation request failed", error);
-        setMessage("Content verification could not be reached. Please try again.");
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (sessionError || !accessToken) {
+        setMessage("Your session has expired. Please sign in again.");
         setLoading(false);
         return;
       }
-      if (!moderationResponse.ok || moderation.allowed !== true) {
-        const code = moderation.errorCode ? ` Code: ${moderation.errorCode}.` : "";
-        const detail = moderation.errorMessage ? ` Details: ${moderation.errorMessage}` : "";
-        setMessage(`${moderation.reason || "This post could not be approved."}${code}${detail}`);
+
+      const response = await fetch("/api/posts/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          images,
+          postType,
+          brandName,
+          note,
+          body,
+          brandLink,
+          category,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok !== true) {
+        const reviewNote = result.reviewRequired
+          ? " This image was held and was not published. No moderator review screen is configured yet."
+          : "";
+        setMessage(`${result.error || "We could not publish this post."}${reviewNote}`);
         setLoading(false);
         return;
       }
+      router.push("/");
+    } catch {
+      setMessage("We could not publish this post. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    const mediaUrls = [];
-    for (const imageFile of imageFiles) {
-      const fileExt = imageFile.name.split(".").pop();
-      const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from("post-images").upload(filePath, imageFile);
-      if (uploadError) {
-        setMessage(uploadError.message);
-        setLoading(false);
-        return;
-      }
-      const { data: publicUrlData } = supabase.storage.from("post-images").getPublicUrl(filePath);
-      mediaUrls.push(publicUrlData.publicUrl);
-    }
-
-    const { error: insertError } = await supabase.from("posts").insert({
-      user_id: user.id,
-      brand_name: brandName,
-      note: postType === "post" ? note : null,
-      body: postType === "thread" ? body : null,
-      brand_link: postType === "post" ? brandLink : null,
-      category: postType === "post" ? category : "Discussion",
-      image_url: mediaUrls[0] || "",
-      media_urls: mediaUrls,
-      post_type: postType,
-    });
-
-    setLoading(false);
-    if (insertError) setMessage(insertError.message);
-    else router.push("/");
   }
 
   if (checkingAuth) return null;
@@ -149,7 +128,7 @@ export default function NewPost() {
     );
   }
 
-  const submitDisabled = loading || !rightsConfirmed || imageFiles.length === 0;
+  const submitDisabled = loading || imageFiles.length === 0;
 
   return (
     <main className="page">
@@ -195,11 +174,6 @@ export default function NewPost() {
           </>
         )}
 
-        <label className="rights-check">
-          <input type="checkbox" checked={rightsConfirmed} onChange={(e) => setRightsConfirmed(e.target.checked)} />
-          <span>I confirm that this is my own content or that I have permission/right to share it.</span>
-        </label>
-
         <button type="submit" disabled={submitDisabled}>{loading ? "Checking..." : "Post"}</button>
         {!imageFiles.length && <p className="required-note">An image or video is required to create a post.</p>}
         <p className="moderation-note">Every item is checked for unsafe, sexual, harmful, hateful, violent, self-harm, and illegal content before publication.</p>
@@ -220,7 +194,6 @@ export default function NewPost() {
         label { font-size:13px; color:var(--muted); display:flex; flex-direction:column; gap:6px; } label small { font-size:10px; color:var(--muted); }
         input,select,textarea { padding:10px 12px; border-radius:6px; border:1px solid var(--cotton-line); font-size:14px; font-family:var(--font-sans); resize:vertical; }
         .preview-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }.preview { width:100%; aspect-ratio:1; object-fit:cover; border-radius:7px; background:var(--cotton); }
-        .rights-check { flex-direction:row; align-items:flex-start; gap:9px; padding:10px 11px; border:1px solid var(--cotton-line); border-radius:10px; background:var(--cotton); cursor:pointer; }.rights-check input { width:17px; height:17px; margin:0; flex:0 0 auto; accent-color:var(--indigo); }.rights-check span { font:11px/1.45 var(--font-sans); color:var(--ink); }
         button[type="submit"] { margin-top:2px; background:var(--indigo); color:var(--indigo-text); border:none; border-radius:20px; padding:10px; font-size:14px; } button[type="submit"]:disabled { opacity:.45; cursor:not-allowed; }
         .moderation-note,.required-note { font-size:11px; line-height:1.45; text-align:center; margin:0; }.moderation-note { color:var(--muted); }.required-note { color:var(--madder); }.message { font-size:13px; color:var(--madder); text-align:center; margin:0; }
         .auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--cotton); }.auth-card { background:#fff; border-radius:10px; padding:32px; text-align:center; }.link-button { display:inline-block; margin-top:12px; background:var(--indigo); color:var(--indigo-text); padding:10px 20px; border-radius:20px; font-size:14px; }
