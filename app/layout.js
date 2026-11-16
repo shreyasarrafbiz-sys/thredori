@@ -2,9 +2,8 @@ import "./globals.css";
 import Sidebar from "../components/Sidebar";
 
 export const metadata = {
-  title: "Thredori — fashion & home, before they're everywhere",
-  description:
-    "Discover independent Indian fashion and home labels, curated before they're everywhere.",
+  title: "Thredori — a community for people with great taste",
+  description: "Discover what inspires you. Share what you love. Find fashion, home, beauty and everyday inspiration from a community with great taste.",
 };
 
 export default function RootLayout({ children }) {
