@@ -31,6 +31,9 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [featuredPosts, setFeaturedPosts] = useState([]);
+  const [activeFeatured, setActiveFeatured] = useState(0);
+  const [carouselPaused, setCarouselPaused] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -69,6 +72,58 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [loadPage]);
 
+  // The hero is ranked by positive votes first, with comments and saves
+  // used as the engagement tie-breaker. Only image posts can be featured.
+  useEffect(() => {
+    let cancelled = false;
+    async function loadFeatured() {
+      const [{ data: postData, error: postError }, { data: voteData, error: voteError },
+        { data: commentData, error: commentError }, { data: saveData, error: saveError }] = await Promise.all([
+        supabase.from("posts").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("votes").select("post_id,value"),
+        supabase.from("comments").select("post_id"),
+        supabase.from("saved_posts").select("post_id"),
+      ]);
+      if (postError || voteError || commentError || saveError) {
+        console.error("Could not load trending hero posts", { postError, voteError, commentError, saveError });
+        return;
+      }
+      const likes = new Map();
+      const comments = new Map();
+      const saves = new Map();
+      (voteData || []).forEach((vote) => {
+        if (Number(vote.value) === 1) likes.set(vote.post_id, (likes.get(vote.post_id) || 0) + 1);
+      });
+      (commentData || []).forEach((comment) => comments.set(comment.post_id, (comments.get(comment.post_id) || 0) + 1));
+      (saveData || []).forEach((save) => saves.set(save.post_id, (saves.get(save.post_id) || 0) + 1));
+      const ranked = (postData || []).map((post) => ({
+        ...mapPost(post),
+        likes: likes.get(post.id) || 0,
+        comments: comments.get(post.id) || 0,
+        saves: saves.get(post.id) || 0,
+      })).filter((post) => post.mediaUrls.length > 0)
+        .sort((a, b) => b.likes - a.likes
+          || (b.comments + b.saves) - (a.comments + a.saves)
+          || new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5);
+      if (!cancelled) setFeaturedPosts(ranked);
+    }
+    loadFeatured();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (carouselPaused || featuredPosts.length < 2) return;
+    const timer = setInterval(() => {
+      setActiveFeatured((current) => (current + 1) % featuredPosts.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [carouselPaused, featuredPosts.length]);
+
+  useEffect(() => {
+    if (activeFeatured >= featuredPosts.length) setActiveFeatured(0);
+  }, [activeFeatured, featuredPosts.length]);
+
   useEffect(() => {
     const node = sentinelRef.current;
     if (!node || loadingPosts || search.trim() || !hasMore || loadingMore) return;
@@ -98,7 +153,7 @@ export default function Home() {
       .filter(Boolean).some((value) => String(value).toLowerCase().includes(query));
     return categoryMatch && searchMatch;
   });
-  const heroPosts = posts.filter((post) => post.mediaUrls.length > 0).slice(0, 3);
+  const heroPost = featuredPosts[activeFeatured] || null;
 
   return (
     <main className="home-page">
@@ -115,20 +170,38 @@ export default function Home() {
             </div>
             <div className="hero-footnote"><span className="sparkle">✳</span> Fashion · Home · Beauty · Everyday finds</div>
           </div>
-          <div className="hero-art" aria-label="A glimpse of community inspiration">
-            {heroPosts.length > 0 ? heroPosts.map((post, index) => (
-              <Link href={`/post/${post.id}`} className={`hero-photo hero-photo-${index + 1}`} key={post.id}>
-                <img src={post.mediaUrls[0]} alt={post.name || "Community inspiration"} />
-                <span>{post.category}</span>
-              </Link>
-            )) : (
+          <div className="hero-art" aria-label="Top community finds, ranked by likes and engagement" onMouseEnter={() => setCarouselPaused(true)} onMouseLeave={() => setCarouselPaused(false)} onFocus={() => setCarouselPaused(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setCarouselPaused(false); }}>
+            {featuredPosts.length > 0 ? (
+              <div className="featured-carousel">
+                <div className="featured-track" style={{ transform: `translateX(-${activeFeatured * 100}%)` }}>
+                  {featuredPosts.map((post, index) => (
+                    <Link href={`/post/${post.id}`} className="featured-slide" key={post.id} aria-label={`Featured find ${index + 1}: ${post.name || post.category}`}>
+                      <img src={post.mediaUrls[0]} alt={post.name || "Trending community find"} />
+                      <div className="featured-overlay">
+                        <span className="featured-label">THREDORI TOP PICKS · {String(index + 1).padStart(2, "0")}</span>
+                        <strong>{post.name || "A community find"}</strong>
+                        <span>{post.category} <i>·</i> ▲ {post.likes} likes <i>·</i> {post.comments + post.saves} more interactions</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                {featuredPosts.length > 1 && <>
+                  <button type="button" className="carousel-arrow previous" onClick={() => setActiveFeatured((activeFeatured - 1 + featuredPosts.length) % featuredPosts.length)} aria-label="Previous featured post">‹</button>
+                  <button type="button" className="carousel-arrow next" onClick={() => setActiveFeatured((activeFeatured + 1) % featuredPosts.length)} aria-label="Next featured post">›</button>
+                  <div className="carousel-controls">
+                    <div className="carousel-dots">{featuredPosts.map((post, index) => <button type="button" key={post.id} className={index === activeFeatured ? "carousel-dot active" : "carousel-dot"} onClick={() => setActiveFeatured(index)} aria-label={`Show featured post ${index + 1}`} aria-current={index === activeFeatured ? "true" : undefined}/>)}</div>
+                    <span>{String(activeFeatured + 1).padStart(2, "0")} / {String(featuredPosts.length).padStart(2, "0")}</span>
+                  </div>
+                </>}
+              </div>
+            ) : (
               <div className="editorial-stack" aria-hidden="true">
                 <div className="paper paper-back"><span>THE ART OF</span><strong>FINDING<br />YOUR STYLE</strong></div>
                 <div className="paper paper-front"><i>THREDORI</i><strong>INSPIRATION<br />LIVES HERE.</strong><span>ISSUE Nº 01 · EVERYDAY EDIT</span></div>
                 <span className="art-stamp">GOOD<br />FINDS<br />ONLY</span>
               </div>
             )}
-            <span className="art-caption">A little inspiration, every day.</span>
+            <span className="art-caption">{featuredPosts.length ? "The community's most-loved finds, on rotation." : "A little inspiration, every day."}</span>
           </div>
         </section>
 
@@ -172,14 +245,14 @@ export default function Home() {
         .hero-copy>p{max-width:430px;font-size:15px;line-height:1.8;color:var(--muted);margin:0}
         .hero-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:30px}.button-primary,.button-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 21px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.02em;transition:transform .2s,background .2s}.button-primary{background:var(--accent);color:white}.button-primary:hover{background:#99543f;transform:translateY(-2px)}.button-secondary{border:1px solid var(--line-strong);color:var(--ink);background:transparent}.button-secondary:hover{transform:translateY(-2px);background:white}
         .hero-footnote{margin-top:34px;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase}.sparkle{color:var(--accent);font-size:16px;margin-right:8px}
-        .hero-art{min-height:390px;position:relative;display:flex;align-items:center;justify-content:center}.hero-photo{position:absolute;display:block;background:var(--sand);padding:8px 8px 28px;box-shadow:0 16px 45px rgba(42,34,27,.12);transition:transform .3s}.hero-photo img{width:100%;height:100%;object-fit:cover;display:block}.hero-photo span{position:absolute;bottom:8px;left:12px;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}.hero-photo-1{width:48%;height:290px;left:7%;top:8%;transform:rotate(-7deg);z-index:2}.hero-photo-2{width:43%;height:255px;right:3%;top:16%;transform:rotate(6deg);z-index:1}.hero-photo-3{width:40%;height:220px;left:31%;bottom:0;transform:rotate(-1deg);z-index:3}.hero-photo:hover{z-index:5;transform:rotate(0) translateY(-5px)}
+        .hero-art{min-height:390px;position:relative;display:flex;align-items:center;justify-content:center}.featured-carousel{position:relative;width:min(100%,530px);height:370px;overflow:hidden;background:var(--sand);box-shadow:0 18px 48px rgba(42,34,27,.14)}.featured-track{display:flex;height:100%;transition:transform 650ms cubic-bezier(.22,.7,.2,1)}.featured-slide{position:relative;flex:0 0 100%;height:100%;display:block;background:var(--sand)}.featured-slide img{width:100%;height:100%;display:block;object-fit:cover}.featured-slide:after{content:"";position:absolute;inset:35% 0 0;background:linear-gradient(transparent,rgba(25,22,19,.76))}.featured-overlay{position:absolute;z-index:1;left:25px;right:25px;bottom:45px;display:flex;flex-direction:column;gap:7px;color:#fff}.featured-label{font-size:9px;letter-spacing:.17em;font-weight:800}.featured-overlay strong{font:500 31px/1.05 var(--font-editorial)}.featured-overlay>span:last-child{font-size:10px;letter-spacing:.04em}.featured-overlay i{font-style:normal;margin:0 4px;opacity:.7}.carousel-arrow{position:absolute;top:46%;z-index:3;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.9);color:var(--ink);font:26px/1 var(--font-sans);box-shadow:0 3px 14px rgba(0,0,0,.12)}.carousel-arrow.previous{left:12px}.carousel-arrow.next{right:12px}.carousel-controls{position:absolute;z-index:3;left:24px;right:24px;bottom:17px;display:flex;align-items:center;justify-content:space-between;color:#fff;font-size:9px;letter-spacing:.12em}.carousel-dots{display:flex;gap:6px}.carousel-dot{width:6px;height:6px;padding:0;border:0;border-radius:8px;background:rgba(255,255,255,.55);transition:width .2s,background .2s}.carousel-dot.active{width:22px;background:#fff}
         .editorial-stack{width:min(88%,490px);height:360px;position:relative}.paper{position:absolute;box-shadow:0 18px 42px rgba(42,34,27,.12);display:flex;flex-direction:column;justify-content:space-between}.paper-back{width:64%;height:82%;right:3%;top:2%;background:#d9c6ae;color:#4b4036;padding:28px;transform:rotate(7deg)}.paper-back span{font-size:10px;letter-spacing:.2em}.paper-back strong{font:italic 42px/1 var(--font-editorial)}.paper-front{width:65%;height:91%;left:5%;top:0;background:#e9e0d4;color:#2d2924;padding:25px;transform:rotate(-5deg);border:9px solid #f8f5ef}.paper-front i{font:italic 14px var(--font-editorial);letter-spacing:.08em}.paper-front strong{font:500 34px/.98 var(--font-editorial);letter-spacing:-.04em}.paper-front span{font-size:8px;letter-spacing:.17em}.art-stamp{position:absolute;right:2%;bottom:6%;width:86px;height:86px;border:1px solid var(--accent);border-radius:50%;display:grid;place-content:center;text-align:center;font-size:10px;line-height:1.2;letter-spacing:.12em;color:var(--accent);transform:rotate(12deg);z-index:4}.art-caption{position:absolute;right:0;bottom:-23px;font:italic 13px var(--font-editorial);color:var(--muted)}
         .category-section{padding:31px 0 38px;border-bottom:1px solid var(--line)}.category-list{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.category-chip{border:1px solid var(--line-strong);background:transparent;color:var(--muted);border-radius:30px;padding:10px 17px;font-size:11px;transition:all .18s}.category-chip:hover,.category-chip.active{background:var(--ink);border-color:var(--ink);color:white}
         .discover-section{padding:55px 0 75px;scroll-margin-top:20px}.section-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:26px}.section-heading h2{font:500 clamp(32px,4vw,46px)/1.05 var(--font-editorial);letter-spacing:-.03em;margin:11px 0 7px;color:var(--ink)}.section-heading p{font-size:12px;color:var(--muted);margin:0}.live-label{font-size:9px;letter-spacing:.14em;color:var(--muted);white-space:nowrap}.live-label i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#7b936e;margin:0 7px 1px 0}
         .masonry-grid{columns:2;column-gap:18px}.masonry-grid :global(.brand-card){display:inline-block;width:100%;margin:0 0 18px;break-inside:avoid;background:white;border:1px solid var(--line);border-radius:5px;padding:9px;box-shadow:0 5px 22px rgba(40,34,28,.045)}.masonry-grid :global(.brand-card:hover){transform:translateY(-3px);box-shadow:0 12px 28px rgba(40,34,28,.1)}.masonry-grid :global(.polaroid){border:0;border-radius:2px;box-shadow:none;padding:0 0 8px;margin-bottom:5px}.masonry-grid :global(.brand-photo){width:100%;height:auto;object-fit:contain}.masonry-grid :global(.brand-card-name){font:500 17px var(--font-editorial);margin:8px 2px 3px;color:var(--ink)}.masonry-grid :global(.brand-card-note){font-size:11px;margin:0 2px 8px;color:var(--muted)}.masonry-grid :global(.action-row){padding:0 2px 3px}.masonry-grid :global(.action-btn),.masonry-grid :global(.comment-btn){border-radius:3px}.status-message{text-align:center;padding:42px 0;color:var(--muted);font:italic 16px var(--font-editorial)}.empty-state{text-align:center;padding:75px 20px;background:var(--sand-soft);border:1px solid var(--line);}.empty-mark{font-size:25px;color:var(--accent)}.empty-state h3{font:500 29px var(--font-editorial);margin:12px 0 7px;color:var(--ink)}.empty-state p{font-size:12px;color:var(--muted);margin:0 auto 20px;max-width:390px;line-height:1.7}.feed-sentinel{height:2px}.site-footer{border-top:1px solid var(--line);padding:24px 0 34px;display:flex;justify-content:space-between;gap:15px;align-items:center;color:var(--muted);font-size:10px}.site-footer a:first-child{font:italic 18px var(--font-editorial);color:var(--ink)}
         @media(min-width:640px){.masonry-grid{columns:3}}@media(min-width:960px){.masonry-grid{columns:4}}@media(min-width:1280px){.masonry-grid{columns:5}}
-        @media(max-width:760px){.hero{grid-template-columns:1fr;padding:54px 0 48px;gap:20px}.hero-art{min-height:320px;max-width:540px;width:100%;margin:0 auto}.editorial-stack{height:300px}.paper-back strong{font-size:35px}.paper-front strong{font-size:29px}.hero-photo-1{height:240px}.hero-photo-2{height:220px}.hero-photo-3{height:185px}.section-heading{align-items:start;flex-direction:column}.live-label{margin-top:-9px}.site-footer{flex-wrap:wrap}.site-footer span{order:3;width:100%}}
-        @media(max-width:430px){.hero{padding-top:42px}.hero-art{min-height:285px}.hero-photo-1{height:210px}.hero-photo-2{height:190px}.hero-photo-3{height:165px}.category-chip{padding:9px 13px}.masonry-grid{column-gap:10px}.masonry-grid :global(.brand-card){margin-bottom:10px;padding:6px}}
+        @media(max-width:760px){.hero{grid-template-columns:1fr;padding:54px 0 48px;gap:20px}.hero-art{min-height:320px;max-width:540px;width:100%;margin:0 auto}.featured-carousel{height:320px}.featured-overlay strong{font-size:27px}.editorial-stack{height:300px}.paper-back strong{font-size:35px}.paper-front strong{font-size:29px}.hero-photo-1{height:240px}.hero-photo-2{height:220px}.hero-photo-3{height:185px}.section-heading{align-items:start;flex-direction:column}.live-label{margin-top:-9px}.site-footer{flex-wrap:wrap}.site-footer span{order:3;width:100%}}
+        @media(max-width:430px){.hero{padding-top:42px}.hero-art{min-height:285px}.featured-carousel{height:285px}.featured-overlay{left:17px;right:17px;bottom:42px}.featured-overlay strong{font-size:24px}.carousel-controls{left:17px;right:17px}.hero-photo-1{height:210px}.hero-photo-2{height:190px}.hero-photo-3{height:165px}.category-chip{padding:9px 13px}.masonry-grid{column-gap:10px}.masonry-grid :global(.brand-card){margin-bottom:10px;padding:6px}}
       `}
     </style>
     </main>
