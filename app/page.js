@@ -78,32 +78,28 @@ export default function Home() {
     let cancelled = false;
     async function loadFeatured() {
       const [{ data: postData, error: postError }, { data: voteData, error: voteError },
-        { data: commentData, error: commentError }, { data: saveData, error: saveError }] = await Promise.all([
+        { data: commentData, error: commentError }] = await Promise.all([
         supabase.from("posts").select("*").order("created_at", { ascending: false }).limit(500),
         supabase.from("votes").select("post_id,value"),
         supabase.from("comments").select("post_id"),
-        supabase.from("saved_posts").select("post_id"),
       ]);
-      if (postError || voteError || commentError || saveError) {
-        console.error("Could not load trending hero posts", { postError, voteError, commentError, saveError });
+      if (postError || voteError || commentError) {
+        console.error("Could not load trending hero posts", { postError, voteError, commentError });
         return;
       }
       const likes = new Map();
       const comments = new Map();
-      const saves = new Map();
       (voteData || []).forEach((vote) => {
         if (Number(vote.value) === 1) likes.set(vote.post_id, (likes.get(vote.post_id) || 0) + 1);
       });
       (commentData || []).forEach((comment) => comments.set(comment.post_id, (comments.get(comment.post_id) || 0) + 1));
-      (saveData || []).forEach((save) => saves.set(save.post_id, (saves.get(save.post_id) || 0) + 1));
       const ranked = (postData || []).map((post) => ({
         ...mapPost(post),
         likes: likes.get(post.id) || 0,
         comments: comments.get(post.id) || 0,
-        saves: saves.get(post.id) || 0,
       })).filter((post) => post.mediaUrls.length > 0)
         .sort((a, b) => b.likes - a.likes
-          || (b.comments + b.saves) - (a.comments + a.saves)
+          || b.comments - a.comments
           || new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 5);
       if (!cancelled) setFeaturedPosts(ranked);
@@ -180,7 +176,7 @@ export default function Home() {
                       <div className="featured-overlay">
                         <span className="featured-label">THREDORI TOP PICKS · {String(index + 1).padStart(2, "0")}</span>
                         <strong>{post.name || "A community find"}</strong>
-                        <span>{post.category} <i>·</i> ▲ {post.likes} likes <i>·</i> {post.comments + post.saves} more interactions</span>
+                        <span>{post.category} <i>·</i> ▲ {post.likes} likes <i>·</i> {post.comments} comments</span>
                       </div>
                     </Link>
                   ))}
